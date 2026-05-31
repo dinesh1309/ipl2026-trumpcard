@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import type { Card } from "@/lib/cards";
+import { WinSparks } from "@/components/MatchFx";
 import {
   STATS,
   phaseForRound,
@@ -90,19 +91,22 @@ export function ResultScreen({
 
       {tied ? (
         <>
-          <div className="animate-reveal mt-5 text-5xl">🤝</div>
-          <h2 className="font-display mt-3 text-3xl font-bold tracking-tight text-white">
-            It&apos;s a Tie
-          </h2>
+          <div className="animate-reveal mt-5 text-5xl">⚖️</div>
+          <span className="phase-label font-display mt-3 inline-block bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] bg-clip-text text-3xl font-bold uppercase tracking-tight text-transparent">
+            Super Over
+          </span>
           <p className="mt-2 text-sm text-[var(--ink-dim)]">
-            Both captured <span className="text-white">{scoreP1}</span> cards.
-            Settle it with one sudden-death ball.
+            Scores level at <span className="text-white">{scoreP1}</span>. One ball
+            decides it.
           </p>
         </>
       ) : (
         <>
-          <div className="animate-reveal mt-5 text-5xl drop-shadow-[0_0_24px_rgba(245,197,24,0.55)]">
-            🏆
+          <div className="relative mt-5 flex items-center justify-center">
+            <WinSparks />
+            <div className="animate-reveal text-5xl drop-shadow-[0_0_24px_rgba(245,197,24,0.55)]">
+              🏆
+            </div>
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.3em] text-[var(--ink-dim)]">
             Player of the Match
@@ -112,7 +116,7 @@ export function ResultScreen({
           </h2>
           {sd && (
             <p className="text-gold mt-2 text-[11px] font-semibold uppercase tracking-wider">
-              ⚡ Won the sudden-death ball
+              ⚡ Won the Super Over
             </p>
           )}
         </>
@@ -146,7 +150,7 @@ export function ResultScreen({
       {sd && (
         <div className="animate-reveal mt-5 w-full rounded-2xl border border-[var(--gold)]/30 bg-[var(--gold)]/8 px-4 py-3 text-left">
           <p className="font-display text-center text-xs font-bold uppercase tracking-[0.2em] text-gold">
-            Sudden Death · {sd.stat.label}
+            Super Over · {sd.stat.label}
           </p>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-white/90">
@@ -171,7 +175,7 @@ export function ResultScreen({
             onClick={playSuddenDeath}
             className="font-display w-full rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)] transition active:scale-[0.98]"
           >
-            Sudden-Death Ball
+            Play the Super Over
           </button>
         )}
         <button

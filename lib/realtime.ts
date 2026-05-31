@@ -74,6 +74,7 @@ export interface MatchDoc {
   outcome: MatchOutcome | null;
   p1Next: boolean;
   p2Next: boolean;
+  history: ("p1" | "p2" | "tie")[]; // per-ball winner, for the over ticker
   winner: 1 | 2 | "tie" | null;
 }
 
@@ -178,6 +179,7 @@ export async function attemptMatchmake(clientId: string): Promise<string | null>
         outcome: null,
         p1Next: false,
         p2Next: false,
+        history: [],
         winner: null,
       };
       tx.set(doc(db, "matches", matchId), match);
@@ -302,11 +304,19 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
 
   // 3) Advance once both players tap Next.
   if (m.outcome && m.outcome.round === m.round && m.p1Next && m.p2Next) {
+    const o = m.outcome;
+    const ballResult: "p1" | "p2" | "tie" =
+      o.winner === "tie"
+        ? "tie"
+        : (o.winner === "attacker") === (m.round % 2 === 0)
+          ? "p1"
+          : "p2";
+    const history = [...(m.history ?? []), ballResult];
     const nextRound = m.round + 1;
     if (nextRound >= TOTAL_ROUNDS) {
       const winner: 1 | 2 | "tie" =
         m.scoreP1 === m.scoreP2 ? "tie" : m.scoreP1 > m.scoreP2 ? 1 : 2;
-      await updateDoc(ref, { status: "finished", winner });
+      await updateDoc(ref, { status: "finished", winner, history });
     } else {
       await updateDoc(ref, {
         round: nextRound,
@@ -314,6 +324,7 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
         outcome: null,
         p1Next: false,
         p2Next: false,
+        history,
       });
     }
   }

@@ -7,6 +7,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CardFace } from "@/components/CardFace";
+import { PhaseIntro } from "@/components/PhaseIntro";
+import { OverTicker } from "@/components/OverTicker";
+import { BallStamp, VizagStrike, WinSparks } from "@/components/MatchFx";
 import { HowToPlay } from "@/components/Lobby";
 import {
   STATS,
@@ -220,7 +223,12 @@ export function OnlineGame({ onExit }: { onExit: () => void }) {
     const iWon = match.winner !== "tie" && (match.winner === 1) === isP1;
     return (
       <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
-        <div className="text-5xl">{match.winner === "tie" ? "🤝" : iWon ? "🏆" : "🫡"}</div>
+        <div className="relative flex items-center justify-center">
+          {iWon && <WinSparks />}
+          <span className="text-5xl">
+            {match.winner === "tie" ? "⚖️" : iWon ? "🏆" : "🫡"}
+          </span>
+        </div>
         <h2 className="font-display text-3xl font-bold text-white">
           {match.winner === "tie" ? "Match Tied" : iWon ? "You Win!" : "You Lose"}
         </h2>
@@ -288,6 +296,8 @@ function OnlineMatch({
 
   const pickedKey = outcome?.statKey;
   const pickedStat = pickedKey ? STATS.find((s) => s.key === pickedKey) : null;
+  const iWonBall =
+    !!outcome && outcome.winner !== "tie" && (outcome.winner === "attacker") === amAttacker;
 
   // Effective values for the reveal (mine vs opponent).
   const myEff =
@@ -311,7 +321,8 @@ function OnlineMatch({
   const bowlingStats = STATS.filter((s) => s.group === "bowling");
 
   return (
-    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5">
+    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
+      <PhaseIntro round={match.round} />
       {/* Phase banner */}
       <div
         className="relative overflow-hidden rounded-2xl border px-4 py-3"
@@ -343,14 +354,29 @@ function OnlineMatch({
         </div>
       </div>
 
+      {/* Over-by-over ticker */}
+      <div className="mt-3">
+        <OverTicker
+          results={match.history ?? []}
+          current={match.round}
+          youAre={isP1 ? "p1" : "p2"}
+        />
+      </div>
+
       {/* Scoreboard */}
       <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--hair)] bg-black/30 px-4 py-2.5">
         <span className="font-display text-sm font-semibold text-gold">
-          {myName} <span className="font-mono text-xl text-white">{myScore}</span>
+          {myName}{" "}
+          <span key={myScore} className="animate-score-pop font-mono text-xl text-white">
+            {myScore}
+          </span>
         </span>
         <span className="text-[10px] uppercase tracking-wider text-[var(--ink-dim)]">vs</span>
         <span className="font-display text-sm font-semibold text-white/80">
-          <span className="font-mono text-xl">{oppScore}</span> {oppName}
+          <span key={oppScore} className="animate-score-pop font-mono text-xl">
+            {oppScore}
+          </span>{" "}
+          {oppName}
         </span>
       </div>
 
@@ -370,17 +396,20 @@ function OnlineMatch({
         )}
       </div>
 
+      {/* Cards: stacked on mobile, side-by-side on laptop */}
+      <div className="mt-3 flex flex-col md:flex-row md:items-start md:gap-5">
       {/* My card */}
-      <div className="mt-3">
+      <div className="md:flex-1">
         <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
           You · {myName}
         </p>
-        <div className="mt-1.5">
-          <CardFace
-            card={myCard}
-            highlightStatKey={pickedKey}
-            shownValue={myEff}
-          />
+        <div
+          className={`relative mt-1.5 transition duration-300 ${
+            outcome && !iWonBall && outcome.winner !== "tie" ? "opacity-55 saturate-50" : ""
+          }`}
+        >
+          <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} />
+          {outcome && myCard.vizag && <VizagStrike key={`me-${match.round}`} />}
         </div>
 
         {/* Attacker stat picker */}
@@ -436,40 +465,49 @@ function OnlineMatch({
         ) : null}
       </div>
 
-      <div className="my-2 text-center">
+      <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
         <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
           VS
         </span>
       </div>
 
       {/* Opponent card — hidden until reveal */}
-      <div>
+      <div className="md:flex-1">
         <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
           {oppName}
         </p>
-        <div className="mt-1.5">
+        <div
+          className={`relative mt-1.5 transition duration-300 ${
+            outcome && iWonBall ? "opacity-55 saturate-50" : ""
+          }`}
+        >
           {outcome ? (
             <CardFace card={oppCard} highlightStatKey={pickedKey} shownValue={oppEff} />
           ) : (
             <CardFace card={oppCard} revealed={false} />
           )}
+          {outcome && oppCard.vizag && <VizagStrike key={`opp-${match.round}`} />}
         </div>
+      </div>
       </div>
 
       {/* Outcome + Next */}
       {outcome && (
         <div className="animate-reveal mt-4">
           <div className="rounded-2xl border border-[var(--hair)] bg-black/45 px-4 py-3 text-center">
+            <div className="mb-1.5 flex justify-center">
+              <BallStamp kind={outcome.winner === "tie" ? "tie" : "capture"} />
+            </div>
             {outcome.winner === "tie" ? (
               <p className="font-display text-base font-bold uppercase tracking-wide text-white">
                 Ball Tied — no capture
               </p>
             ) : (
               <p className="font-display text-base font-bold uppercase tracking-wide text-white">
-                {(outcome.winner === "attacker") === amAttacker ? (
-                  <span className="text-gold">You capture the card</span>
+                {iWonBall ? (
+                  <span className="text-gold">You take the card</span>
                 ) : (
-                  <span>{oppName} captures the card</span>
+                  <span>{oppName} takes the card</span>
                 )}
               </p>
             )}
@@ -485,8 +523,8 @@ function OnlineMatch({
               <span className="text-[var(--ink-dim)]/60">({oppName})</span>
             </p>
             {(myCard.vizag || oppCard.vizag) && (
-              <p className="text-gold mt-1.5 text-[11px] font-semibold uppercase tracking-wider">
-                ⚡ Vizag bonus applied
+              <p className="text-gold mt-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
+                ⚡ Vizag Power · +10%
               </p>
             )}
           </div>

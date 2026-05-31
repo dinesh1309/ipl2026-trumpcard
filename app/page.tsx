@@ -44,12 +44,14 @@ export default function Home() {
   const [round, setRound] = useState(0); // 0-based ball index
   const [scoreP1, setScoreP1] = useState(0);
   const [scoreP2, setScoreP2] = useState(0);
+  const [results, setResults] = useState<("p1" | "p2" | "tie" | null)[]>([]);
 
   function startMatch() {
     setHands(deal());
     setRound(0);
     setScoreP1(0);
     setScoreP2(0);
+    setResults([]);
     setScreen("match");
   }
 
@@ -62,12 +64,18 @@ export default function Home() {
     setRound(0);
     setScoreP1(0);
     setScoreP2(0);
+    setResults([]);
     setScreen("name");
   }
 
   function onResolve(winner: 1 | 2 | "tie") {
     if (winner === 1) setScoreP1((s) => s + 1);
     else if (winner === 2) setScoreP2((s) => s + 1);
+    setResults((prev) => {
+      const next = [...prev];
+      next[round] = winner === "tie" ? "tie" : winner === 1 ? "p1" : "p2";
+      return next;
+    });
   }
 
   function onNext() {
@@ -151,6 +159,7 @@ export default function Home() {
           round={round}
           scoreP1={scoreP1}
           scoreP2={scoreP2}
+          results={results}
           onResolve={onResolve}
           onNext={onNext}
         />

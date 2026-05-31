@@ -7,6 +7,9 @@
 
 import { useMemo, useState } from "react";
 import { CardFace } from "@/components/CardFace";
+import { PhaseIntro } from "@/components/PhaseIntro";
+import { OverTicker } from "@/components/OverTicker";
+import { BallStamp, VizagStrike } from "@/components/MatchFx";
 import type { Card } from "@/lib/cards";
 import {
   STATS,
@@ -40,6 +43,7 @@ export function MatchScreen({
   round,
   scoreP1,
   scoreP2,
+  results,
   onResolve,
   onNext,
 }: {
@@ -50,6 +54,7 @@ export function MatchScreen({
   round: number; // 0-based
   scoreP1: number;
   scoreP2: number;
+  results: ("p1" | "p2" | "tie" | null)[];
   onResolve: (winner: 1 | 2 | "tie") => void;
   onNext: () => void;
 }) {
@@ -118,7 +123,8 @@ export function MatchScreen({
     : undefined;
 
   return (
-    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5">
+    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
+      <PhaseIntro round={round} />
       {/* Phase banner */}
       <div
         className="relative overflow-hidden rounded-2xl border px-4 py-3"
@@ -148,6 +154,11 @@ export function MatchScreen({
             <span className="text-[var(--ink-dim)]"> / {TOTAL_ROUNDS}</span>
           </span>
         </div>
+      </div>
+
+      {/* Over-by-over ticker */}
+      <div className="mt-3">
+        <OverTicker results={results} current={round} />
       </div>
 
       {/* Capture scoreboard */}
@@ -185,15 +196,21 @@ export function MatchScreen({
         )}
       </div>
 
-      {/* Attacker card — face-up with tappable stat rows */}
-      <div className="mt-3">
-        <CardLabel
-          name={attackerName}
-          tag={attackerIsP1 ? "P1" : "P2"}
-          role="Attacker"
-          win={outcome?.winner === "attacker"}
-        />
-        <div className="mt-1.5">
+      {/* Cards: stacked on mobile, side-by-side on laptop */}
+      <div className="mt-3 flex flex-col md:flex-row md:items-start md:gap-5">
+        {/* Attacker card — face-up with tappable stat rows */}
+        <div className="md:flex-1">
+          <CardLabel
+            name={attackerName}
+            tag={attackerIsP1 ? "P1" : "P2"}
+            role="Attacker"
+            win={outcome?.winner === "attacker"}
+          />
+        <div
+          className={`relative mt-1.5 transition duration-300 ${
+            outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
+          }`}
+        >
           {!revealed ? (
             <TappableCard
               card={attackerCard}
@@ -207,24 +224,29 @@ export function MatchScreen({
               shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
             />
           )}
+          {revealed && attackerCard.vizag && <VizagStrike key={`atk-${round}`} />}
         </div>
       </div>
 
-      <div className="my-2 text-center">
-        <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
-          VS
-        </span>
-      </div>
+        <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
+          <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
+            VS
+          </span>
+        </div>
 
-      {/* Defender card — hidden until pick locks */}
-      <div>
-        <CardLabel
-          name={defenderName}
-          tag={attackerIsP1 ? "P2" : "P1"}
-          role="Defender"
-          win={outcome?.winner === "defender"}
-        />
-        <div className="mt-1.5">
+        {/* Defender card — hidden until pick locks */}
+        <div className="md:flex-1">
+          <CardLabel
+            name={defenderName}
+            tag={attackerIsP1 ? "P2" : "P1"}
+            role="Defender"
+            win={outcome?.winner === "defender"}
+          />
+        <div
+          className={`relative mt-1.5 transition duration-300 ${
+            outcome?.winner === "attacker" ? "opacity-55 saturate-50" : ""
+          }`}
+        >
           {revealed ? (
             <CardFace
               card={defenderCard}
@@ -234,6 +256,8 @@ export function MatchScreen({
           ) : (
             <CardFace card={defenderCard} revealed={false} />
           )}
+          {revealed && defenderCard.vizag && <VizagStrike key={`def-${round}`} />}
+          </div>
         </div>
       </div>
 
@@ -241,14 +265,16 @@ export function MatchScreen({
       {outcome && (
         <div className="animate-reveal mt-4">
           <div className="rounded-2xl border border-[var(--hair)] bg-black/45 px-4 py-3 text-center">
+            <div className="mb-1.5 flex justify-center">
+              <BallStamp kind={outcome.winner === "tie" ? "tie" : "capture"} />
+            </div>
             {outcome.winner === "tie" ? (
               <p className="font-display text-base font-bold uppercase tracking-wide text-white">
                 Ball Tied — no capture
               </p>
             ) : (
               <p className="font-display text-base font-bold uppercase tracking-wide text-white">
-                <span className="text-gold">{ballWinnerName}</span> captures the
-                card
+                <span className="text-gold">{ballWinnerName}</span> takes the card
               </p>
             )}
             <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
@@ -268,8 +294,8 @@ export function MatchScreen({
               </p>
             )}
             {vizagInPlay && (
-              <p className="text-gold mt-1.5 text-[11px] font-semibold uppercase tracking-wider">
-                ⚡ Vizag bonus applied
+              <p className="text-gold mt-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
+                ⚡ Vizag Power · +10%
               </p>
             )}
           </div>
@@ -324,7 +350,10 @@ function ScoreChip({
           {name}
         </span>
       </div>
-      <span className="font-display ml-2 text-2xl font-bold tabular-nums text-white">
+      <span
+        key={score}
+        className="animate-score-pop font-display ml-2 text-2xl font-bold tabular-nums text-white"
+      >
         {score}
       </span>
     </div>
