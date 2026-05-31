@@ -26,6 +26,7 @@ import { CARD_POOL, type Card } from "@/lib/cards";
 import {
   STATS,
   TOTAL_ROUNDS,
+  TURN_SECONDS,
   phaseForRound,
   resolveRound,
   selectMatchDeck,
@@ -56,6 +57,7 @@ export interface MatchOutcome {
   attackerMissing: boolean;
   defenderMissing: boolean;
   winner: "attacker" | "defender" | "tie";
+  timedOut: boolean; // attacker ran out of time → auto-lost the ball
 }
 
 export interface MatchDoc {
@@ -72,10 +74,14 @@ export interface MatchDoc {
   p2Ready: boolean;
   pick: MatchPick | null;
   outcome: MatchOutcome | null;
+  turnDeadline: number | null; // epoch ms; attacker must pick before this
   p1Next: boolean;
   p2Next: boolean;
   history: ("p1" | "p2" | "tie")[]; // per-ball winner, for the over ticker
+  strikesP1: number; // timeout strikes; 2 forfeits the match
+  strikesP2: number;
   winner: 1 | 2 | "tie" | null;
+  winReason: "score" | "forfeit" | null;
 }
 
 function newId(): string {
@@ -177,10 +183,14 @@ export async function attemptMatchmake(clientId: string): Promise<string | null>
         p2Ready: false,
         pick: null,
         outcome: null,
+        turnDeadline: null,
         p1Next: false,
         p2Next: false,
         history: [],
+        strikesP1: 0,
+        strikesP2: 0,
         winner: null,
+        winReason: null,
       };
       tx.set(doc(db, "matches", matchId), match);
       tx.update(p1Ref, { status: "matched", matchId });
@@ -259,9 +269,12 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
   if (clientId !== m.p1Id) return; // P1 is authoritative
   const ref = doc(db, "matches", matchId);
 
-  // 1) Start the match when both have readied up.
+  // 1) Start the match when both have readied up (and start the turn timer).
   if (m.status === "ready" && m.p1Ready && m.p2Ready) {
-    await updateDoc(ref, { status: "active" });
+    await updateDoc(ref, {
+      status: "active",
+      turnDeadline: Date.now() + TURN_SECONDS * 1000,
+    });
     return;
   }
 
@@ -297,8 +310,9 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
       attackerMissing: r.attackerMissing,
       defenderMissing: r.defenderMissing,
       winner: r.winner,
+      timedOut: false,
     };
-    await updateDoc(ref, { outcome, scoreP1, scoreP2 });
+    await updateDoc(ref, { outcome, scoreP1, scoreP2, turnDeadline: null });
     return;
   }
 
@@ -316,7 +330,13 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
     if (nextRound >= TOTAL_ROUNDS) {
       const winner: 1 | 2 | "tie" =
         m.scoreP1 === m.scoreP2 ? "tie" : m.scoreP1 > m.scoreP2 ? 1 : 2;
-      await updateDoc(ref, { status: "finished", winner, history });
+      await updateDoc(ref, {
+        status: "finished",
+        winner,
+        winReason: "score",
+        history,
+        turnDeadline: null,
+      });
     } else {
       await updateDoc(ref, {
         round: nextRound,
@@ -325,7 +345,77 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
         p1Next: false,
         p2Next: false,
         history,
+        turnDeadline: Date.now() + TURN_SECONDS * 1000,
       });
     }
   }
+}
+
+/**
+ * Turn-timer enforcement. If the attacker hasn't picked before turnDeadline,
+ * the attacker loses the ball (defender captures). Only the P1 client writes.
+ * Call from a client-side timer when the deadline passes.
+ */
+export async function resolveTimeout(
+  matchId: string,
+  m: MatchDoc,
+  clientId: string
+): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  if (clientId !== m.p1Id) return; // P1 authoritative
+  if (m.status !== "active") return;
+  if (m.pick && m.pick.round === m.round) return; // a pick exists; resolve handles it
+  if (m.outcome && m.outcome.round === m.round) return; // already resolved
+  if (!m.turnDeadline || Date.now() < m.turnDeadline) return; // not expired yet
+
+  const attackerIsP1 = m.round % 2 === 0;
+  let scoreP1 = m.scoreP1;
+  let scoreP2 = m.scoreP2;
+  let strikesP1 = m.strikesP1 ?? 0;
+  let strikesP2 = m.strikesP2 ?? 0;
+  // Defender (the non-attacker) wins the ball; the attacker takes a strike.
+  if (attackerIsP1) {
+    scoreP2++;
+    strikesP1++;
+  } else {
+    scoreP1++;
+    strikesP2++;
+  }
+
+  const outcome: MatchOutcome = {
+    round: m.round,
+    statKey: "",
+    attackerValue: 0,
+    defenderValue: 0,
+    attackerMissing: false,
+    defenderMissing: false,
+    winner: "defender",
+    timedOut: true,
+  };
+
+  const ref = doc(db, "matches", matchId);
+  // Two strikes → terminate the match and award it to the opponent.
+  if (strikesP1 >= 2 || strikesP2 >= 2) {
+    await updateDoc(ref, {
+      outcome,
+      scoreP1,
+      scoreP2,
+      strikesP1,
+      strikesP2,
+      status: "finished",
+      winner: strikesP1 >= 2 ? 2 : 1,
+      winReason: "forfeit",
+      turnDeadline: null,
+    });
+    return;
+  }
+  await updateDoc(ref, {
+    outcome,
+    scoreP1,
+    scoreP2,
+    strikesP1,
+    strikesP2,
+    turnDeadline: null,
+  });
 }

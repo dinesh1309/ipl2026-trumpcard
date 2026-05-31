@@ -5,7 +5,7 @@
 // and taps a stat; the defender card is hidden until the pick is locked, then
 // resolveRound() decides the ball. Running capture score lives in page.tsx.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
@@ -15,6 +15,7 @@ import type { Card } from "@/lib/cards";
 import {
   STATS,
   TOTAL_ROUNDS,
+  TURN_SECONDS,
   phaseForRound,
   effectiveValue,
   resolveRound,
@@ -43,6 +44,8 @@ export function MatchScreen({
   round,
   scoreP1,
   scoreP2,
+  strikesP1,
+  strikesP2,
   results,
   onResolve,
   onNext,
@@ -54,8 +57,10 @@ export function MatchScreen({
   round: number; // 0-based
   scoreP1: number;
   scoreP2: number;
+  strikesP1: number;
+  strikesP2: number;
   results: ("p1" | "p2" | "tie" | null)[];
-  onResolve: (winner: 1 | 2 | "tie") => void;
+  onResolve: (winner: 1 | 2 | "tie", timedOutAttacker?: 1 | 2) => void;
   onNext: () => void;
 }) {
   const phase = phaseForRound(round);
@@ -70,6 +75,7 @@ export function MatchScreen({
 
   // Locked pick for this ball (null until the attacker taps a stat).
   const [pickedKey, setPickedKey] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   // Reset the pick whenever the round changes.
   const resetKey = `${round}`;
@@ -77,19 +83,57 @@ export function MatchScreen({
   if (seenRound !== resetKey) {
     setSeenRound(resetKey);
     setPickedKey(null);
+    setTimedOut(false);
   }
+
+  // Turn countdown (per ball). The attacker has TURN_SECONDS to pick, else loses.
+  const [now, setNow] = useState(0);
+  const [deadline, setDeadline] = useState(() => Date.now() + TURN_SECONDS * 1000);
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, []);
+  // New deadline each ball.
+  useEffect(() => {
+    setDeadline(Date.now() + TURN_SECONDS * 1000);
+  }, [round]);
 
   const pickedStat = pickedKey
     ? STATS.find((s) => s.key === pickedKey) ?? null
     : null;
 
+  const revealed = pickedKey !== null || timedOut;
+
+  const remaining =
+    !revealed && now ? Math.max(0, Math.ceil((deadline - now) / 1000)) : null;
+
   const outcome = useMemo(() => {
+    if (timedOut) {
+      // Attacker ran out of time → defender wins.
+      return {
+        attackerValue: 0,
+        defenderValue: 0,
+        attackerMissing: false,
+        defenderMissing: false,
+        winner: "defender" as const,
+      };
+    }
     if (!pickedStat) return null;
     return resolveRound(attackerCard, defenderCard, pickedStat, phase);
-  }, [pickedStat, attackerCard, defenderCard, phase]);
+  }, [timedOut, pickedStat, attackerCard, defenderCard, phase]);
+
+  // Fire the timeout once the clock hits zero.
+  useEffect(() => {
+    if (revealed || !now || now < deadline) return;
+    setTimedOut(true);
+    const defender: 1 | 2 = attackerIsP1 ? 2 : 1;
+    onResolve(defender, attackerIsP1 ? 1 : 2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, deadline, revealed]);
 
   function pickStat(stat: StatDef) {
-    if (pickedKey) return;
+    if (pickedKey || timedOut) return;
     setPickedKey(stat.key);
     const res = resolveRound(attackerCard, defenderCard, stat, phase);
     const winner =
@@ -102,8 +146,6 @@ export function MatchScreen({
           : 1;
     onResolve(winner as 1 | 2 | "tie");
   }
-
-  const revealed = pickedKey !== null;
   const vizagInPlay = attackerCard.vizag || defenderCard.vizag;
 
   // Who won the ball, for the result banner.
@@ -166,32 +208,54 @@ export function MatchScreen({
         <ScoreChip
           name={p1Name}
           score={scoreP1}
+          strikes={strikesP1}
           active={attackerIsP1}
           tag="P1"
         />
         <ScoreChip
           name={p2Name}
           score={scoreP2}
+          strikes={strikesP2}
           active={!attackerIsP1}
           tag="P2"
         />
       </div>
 
-      {/* Turn indicator */}
+      {/* Turn indicator + countdown */}
       <div className="mt-4 text-center">
         {!revealed ? (
-          <p className="text-sm text-[var(--ink-dim)]">
-            <span className="font-display font-bold text-gold">
-              {attackerName}
-            </span>{" "}
-            attacks — tap a stat to play
-          </p>
+          <div
+            className={`mx-auto flex max-w-xs items-center justify-center gap-2 rounded-xl border py-2.5 ${
+              remaining !== null && remaining <= 5
+                ? "border-[#ff6a6a]/55 bg-[#ff6a6a]/10"
+                : "border-[var(--gold)]/40 bg-[var(--gold)]/10"
+            }`}
+          >
+            <span
+              className="font-display text-sm font-bold uppercase tracking-[0.15em]"
+              style={{ color: remaining !== null && remaining <= 5 ? "#ff6a6a" : "var(--gold)" }}
+            >
+              {attackerName}&apos;s turn
+            </span>
+            <span className="text-xs text-[var(--ink-dim)]">— tap a stat</span>
+            {remaining !== null && (
+              <span className="font-mono ml-1 text-base font-bold tabular-nums text-white">
+                {remaining}s
+              </span>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-[var(--ink-dim)]">
-            <span className="font-display font-bold text-white">
-              {pickedStat?.label}
-            </span>{" "}
-            · {pickedStat?.lowerWins ? "lower wins" : "higher wins"}
+            {timedOut ? (
+              <span className="font-display font-bold text-[#ff6a6a]">⏱ Time up</span>
+            ) : (
+              <>
+                <span className="font-display font-bold text-white">
+                  {pickedStat?.label}
+                </span>{" "}
+                · {pickedStat?.lowerWins ? "lower wins" : "higher wins"}
+              </>
+            )}
           </p>
         )}
       </div>
@@ -266,9 +330,15 @@ export function MatchScreen({
         <div className="animate-reveal mt-4">
           <div className="rounded-2xl border border-[var(--hair)] bg-black/45 px-4 py-3 text-center">
             <div className="mb-1.5 flex justify-center">
-              <BallStamp kind={outcome.winner === "tie" ? "tie" : "capture"} />
+              <BallStamp
+                kind={timedOut ? "timeout" : outcome.winner === "tie" ? "tie" : "capture"}
+              />
             </div>
-            {outcome.winner === "tie" ? (
+            {timedOut ? (
+              <p className="font-display text-base font-bold uppercase tracking-wide text-white">
+                <span className="text-[#ff6a6a]">{attackerName}</span> ran out of time
+              </p>
+            ) : outcome.winner === "tie" ? (
               <p className="font-display text-base font-bold uppercase tracking-wide text-white">
                 Ball Tied — no capture
               </p>
@@ -277,23 +347,29 @@ export function MatchScreen({
                 <span className="text-gold">{ballWinnerName}</span> takes the card
               </p>
             )}
-            <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
-              {pickedStat?.label}:{" "}
-              <span className="font-mono text-white/90">
-                {outcome.attackerMissing ? "—" : fmt(outcome.attackerValue)}
-              </span>{" "}
-              <span className="text-[var(--ink-dim)]/60">(atk)</span> vs{" "}
-              <span className="font-mono text-white/90">
-                {outcome.defenderMissing ? "—" : fmt(outcome.defenderValue)}
-              </span>{" "}
-              <span className="text-[var(--ink-dim)]/60">(def)</span>
-            </p>
-            {(outcome.attackerMissing || outcome.defenderMissing) && (
+            {timedOut ? (
+              <p className="mt-1 text-[11px] uppercase tracking-wider text-[#ff6a6a]">
+                {attackerName} earns a strike · 2 strikes = forfeit
+              </p>
+            ) : (
+              <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
+                {pickedStat?.label}:{" "}
+                <span className="font-mono text-white/90">
+                  {outcome.attackerMissing ? "—" : fmt(outcome.attackerValue)}
+                </span>{" "}
+                <span className="text-[var(--ink-dim)]/60">(atk)</span> vs{" "}
+                <span className="font-mono text-white/90">
+                  {outcome.defenderMissing ? "—" : fmt(outcome.defenderValue)}
+                </span>{" "}
+                <span className="text-[var(--ink-dim)]/60">(def)</span>
+              </p>
+            )}
+            {!timedOut && (outcome.attackerMissing || outcome.defenderMissing) && (
               <p className="mt-1 text-[10px] uppercase tracking-wider text-[var(--ink-dim)]/70">
                 — = did not bowl
               </p>
             )}
-            {vizagInPlay && (
+            {!timedOut && vizagInPlay && (
               <p className="text-gold mt-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
                 ⚡ Vizag Power · +10%
               </p>
@@ -319,11 +395,13 @@ function round1(n: number): number {
 function ScoreChip({
   name,
   score,
+  strikes,
   active,
   tag,
 }: {
   name: string;
   score: number;
+  strikes: number;
   active: boolean;
   tag: string;
 }) {
@@ -345,6 +423,18 @@ function ScoreChip({
               ● Attacking
             </span>
           )}
+          <span className="flex items-center gap-0.5" title={`${strikes} / 2 timeout strikes`}>
+            {[0, 1].map((i) => (
+              <span
+                key={i}
+                className="h-1.5 w-1.5 rounded-full"
+                style={{
+                  background: i < strikes ? "#ff6a6a" : "rgba(255,255,255,0.18)",
+                  boxShadow: i < strikes ? "0 0 6px rgba(255,106,106,0.7)" : "none",
+                }}
+              />
+            ))}
+          </span>
         </div>
         <span className="font-display block truncate text-sm font-semibold text-white">
           {name}

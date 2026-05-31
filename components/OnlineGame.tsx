@@ -31,6 +31,7 @@ import {
   submitPick,
   setNext,
   reconcile,
+  resolveTimeout,
   decksFor,
   attackerIdForRound,
   type PlayerDoc,
@@ -232,6 +233,11 @@ export function OnlineGame({ onExit }: { onExit: () => void }) {
         <h2 className="font-display text-3xl font-bold text-white">
           {match.winner === "tie" ? "Match Tied" : iWon ? "You Win!" : "You Lose"}
         </h2>
+        {match.winReason === "forfeit" && (
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#ff6a6a]">
+            {iWon ? `${oppName} forfeited` : "Forfeited"} · 2 timeouts
+          </p>
+        )}
         <p className="font-mono text-lg text-white/80">
           {myScore} <span className="text-[var(--ink-dim)]">—</span> {oppScore}
         </p>
@@ -317,6 +323,32 @@ function OnlineMatch({
       : outcome.attackerMissing
     : false;
 
+  const myStrikes = isP1 ? match.strikesP1 ?? 0 : match.strikesP2 ?? 0;
+  const oppStrikes = isP1 ? match.strikesP2 ?? 0 : match.strikesP1 ?? 0;
+
+  // Turn countdown. P1 enforces the timeout; both show the clock.
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const pickedThisRound = !!(match.pick && match.pick.round === match.round);
+  const remaining =
+    match.turnDeadline && !outcome && !pickedThisRound && now
+      ? Math.max(0, Math.ceil((match.turnDeadline - now) / 1000))
+      : null;
+
+  useEffect(() => {
+    if (!isP1 || match.status !== "active" || !match.turnDeadline) return;
+    if (match.pick && match.pick.round === match.round) return;
+    if (match.outcome && match.outcome.round === match.round) return;
+    const ms = Math.max(0, match.turnDeadline - Date.now());
+    const t = setTimeout(() => resolveTimeout(matchId, match, clientId), ms);
+    return () => clearTimeout(t);
+  }, [isP1, matchId, clientId, match]);
+
   return (
     <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
       <PhaseIntro round={match.round} />
@@ -362,17 +394,19 @@ function OnlineMatch({
 
       {/* Scoreboard */}
       <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--hair)] bg-black/30 px-4 py-2.5">
-        <span className="font-display text-sm font-semibold text-gold">
-          {myName}{" "}
+        <span className="font-display flex items-center gap-2 text-sm font-semibold text-gold">
+          {myName}
           <span key={myScore} className="animate-score-pop font-mono text-xl text-white">
             {myScore}
           </span>
+          <Strikes n={myStrikes} />
         </span>
         <span className="text-[10px] uppercase tracking-wider text-[var(--ink-dim)]">vs</span>
-        <span className="font-display text-sm font-semibold text-white/80">
+        <span className="font-display flex items-center gap-2 text-sm font-semibold text-white/80">
+          <Strikes n={oppStrikes} />
           <span key={oppScore} className="animate-score-pop font-mono text-xl">
             {oppScore}
-          </span>{" "}
+          </span>
           {oppName}
         </span>
       </div>
@@ -380,16 +414,42 @@ function OnlineMatch({
       {/* Turn banner — prominent so each player knows when it's their move */}
       {outcome ? (
         <div className="mt-3 text-center text-sm text-[var(--ink-dim)]">
-          <span className="font-display font-bold text-white">{pickedStat?.label}</span> ·{" "}
-          {pickedStat?.lowerWins ? "lower wins" : "higher wins"}
+          {outcome.timedOut ? (
+            <span className="font-display font-bold text-[#ff6a6a]">⏱ Time up</span>
+          ) : (
+            <>
+              <span className="font-display font-bold text-white">{pickedStat?.label}</span> ·{" "}
+              {pickedStat?.lowerWins ? "lower wins" : "higher wins"}
+            </>
+          )}
         </div>
       ) : amAttacker ? (
-        <div className="animate-reveal mt-3 flex items-center justify-center gap-2 rounded-xl border border-[var(--gold)]/45 bg-[var(--gold)]/10 py-3 shadow-[0_0_20px_-6px_rgba(245,197,24,0.5)]">
-          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" />
-          <span className="font-display text-base font-bold uppercase tracking-[0.2em] text-gold">
+        <div
+          className={`animate-reveal mt-3 flex items-center justify-center gap-2 rounded-xl border py-3 ${
+            remaining !== null && remaining <= 5
+              ? "border-[#ff6a6a]/55 bg-[#ff6a6a]/10 shadow-[0_0_20px_-6px_rgba(255,106,106,0.6)]"
+              : "border-[var(--gold)]/45 bg-[var(--gold)]/10 shadow-[0_0_20px_-6px_rgba(245,197,24,0.5)]"
+          }`}
+        >
+          <span
+            className="h-2.5 w-2.5 animate-pulse rounded-full"
+            style={{
+              background: remaining !== null && remaining <= 5 ? "#ff6a6a" : "var(--gold)",
+              boxShadow: `0 0 8px ${remaining !== null && remaining <= 5 ? "#ff6a6a" : "var(--gold)"}`,
+            }}
+          />
+          <span
+            className="font-display text-base font-bold uppercase tracking-[0.2em]"
+            style={{ color: remaining !== null && remaining <= 5 ? "#ff6a6a" : "var(--gold)" }}
+          >
             Your Turn
           </span>
-          <span className="text-xs text-[var(--ink-dim)]">— pick a stat to attack</span>
+          <span className="text-xs text-[var(--ink-dim)]">— pick a stat</span>
+          {remaining !== null && (
+            <span className="font-mono ml-1 text-base font-bold tabular-nums text-white">
+              {remaining}s
+            </span>
+          )}
         </div>
       ) : (
         <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[var(--hair)] bg-black/30 py-3">
@@ -397,7 +457,13 @@ function OnlineMatch({
           <span className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
             {oppName}&apos;s turn
           </span>
-          <span className="text-xs text-[var(--ink-dim)]">— waiting…</span>
+          {remaining !== null ? (
+            <span className="font-mono ml-1 text-sm font-bold tabular-nums text-[var(--ink-dim)]">
+              {remaining}s
+            </span>
+          ) : (
+            <span className="text-xs text-[var(--ink-dim)]">— waiting…</span>
+          )}
         </div>
       )}
 
@@ -463,9 +529,21 @@ function OnlineMatch({
         <div className="animate-reveal mt-4">
           <div className="rounded-2xl border border-[var(--hair)] bg-black/45 px-4 py-3 text-center">
             <div className="mb-1.5 flex justify-center">
-              <BallStamp kind={outcome.winner === "tie" ? "tie" : "capture"} />
+              <BallStamp
+                kind={
+                  outcome.timedOut ? "timeout" : outcome.winner === "tie" ? "tie" : "capture"
+                }
+              />
             </div>
-            {outcome.winner === "tie" ? (
+            {outcome.timedOut ? (
+              <p className="font-display text-base font-bold uppercase tracking-wide text-white">
+                {iWonBall ? (
+                  <span className="text-gold">{oppName} ran out of time</span>
+                ) : (
+                  <span>You ran out of time</span>
+                )}
+              </p>
+            ) : outcome.winner === "tie" ? (
               <p className="font-display text-base font-bold uppercase tracking-wide text-white">
                 Ball Tied — no capture
               </p>
@@ -478,18 +556,25 @@ function OnlineMatch({
                 )}
               </p>
             )}
-            <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
-              {pickedStat?.label}:{" "}
-              <span className="font-mono text-white/90">
-                {myOutcomeMissing ? "—" : fmt(myEff ?? 0)}
-              </span>{" "}
-              <span className="text-[var(--ink-dim)]/60">(you)</span> vs{" "}
-              <span className="font-mono text-white/90">
-                {oppOutcomeMissing ? "—" : fmt(oppEff ?? 0)}
-              </span>{" "}
-              <span className="text-[var(--ink-dim)]/60">({oppName})</span>
-            </p>
-            {(myCard.vizag || oppCard.vizag) && (
+            {!outcome.timedOut && (
+              <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
+                {pickedStat?.label}:{" "}
+                <span className="font-mono text-white/90">
+                  {myOutcomeMissing ? "—" : fmt(myEff ?? 0)}
+                </span>{" "}
+                <span className="text-[var(--ink-dim)]/60">(you)</span> vs{" "}
+                <span className="font-mono text-white/90">
+                  {oppOutcomeMissing ? "—" : fmt(oppEff ?? 0)}
+                </span>{" "}
+                <span className="text-[var(--ink-dim)]/60">({oppName})</span>
+              </p>
+            )}
+            {outcome.timedOut && (
+              <p className="mt-1 text-[11px] uppercase tracking-wider text-[#ff6a6a]">
+                {iWonBall ? `${oppName} earns a strike` : "You earn a strike"} · 2 strikes = forfeit
+              </p>
+            )}
+            {!outcome.timedOut && (myCard.vizag || oppCard.vizag) && (
               <p className="text-gold mt-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
                 ⚡ Vizag Power · +10%
               </p>
@@ -511,5 +596,23 @@ function OnlineMatch({
         </div>
       )}
     </section>
+  );
+}
+
+/** Two strike pips; fill red as a player times out. Two strikes = forfeit. */
+function Strikes({ n }: { n: number }) {
+  return (
+    <span className="flex items-center gap-0.5" title={`${n} / 2 timeout strikes`}>
+      {[0, 1].map((i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{
+            background: i < n ? "#ff6a6a" : "rgba(255,255,255,0.18)",
+            boxShadow: i < n ? "0 0 6px rgba(255,106,106,0.7)" : "none",
+          }}
+        />
+      ))}
+    </span>
   );
 }

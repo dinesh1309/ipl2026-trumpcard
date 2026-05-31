@@ -26,6 +26,7 @@ export function ResultScreen({
   p2Name,
   scoreP1,
   scoreP2,
+  forfeitWinner,
   p1FirstCard,
   p2FirstCard,
   onRematch,
@@ -35,6 +36,7 @@ export function ResultScreen({
   p2Name: string;
   scoreP1: number;
   scoreP2: number;
+  forfeitWinner: 1 | 2 | null;
   p1FirstCard: Card;
   p2FirstCard: Card;
   onRematch: () => void;
@@ -48,16 +50,13 @@ export function ResultScreen({
     p2Eff: number;
   } | null>(null);
 
-  const tied = scoreP1 === scoreP2 && sd === null;
+  // A forfeit (two timeouts) overrides scores and skips any tie/sudden-death.
+  const tied = forfeitWinner === null && scoreP1 === scoreP2 && sd === null;
 
-  // Effective winner after any sudden-death resolution.
-  const winner: 1 | 2 | "tie" = sd
-    ? sd.winner
-    : scoreP1 > scoreP2
-      ? 1
-      : scoreP2 > scoreP1
-        ? 2
-        : "tie";
+  // Effective winner after any forfeit / sudden-death resolution.
+  const winner: 1 | 2 | "tie" =
+    forfeitWinner ??
+    (sd ? sd.winner : scoreP1 > scoreP2 ? 1 : scoreP2 > scoreP1 ? 2 : "tie");
 
   const winnerName = winner === 1 ? p1Name : winner === 2 ? p2Name : null;
 
@@ -114,6 +113,11 @@ export function ResultScreen({
           <h2 className="font-display animate-reveal mt-1 bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] bg-clip-text text-4xl font-bold tracking-tight text-transparent">
             {winnerName}
           </h2>
+          {forfeitWinner && (
+            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#ff6a6a]">
+              Won by forfeit · opponent timed out twice
+            </p>
+          )}
           {sd && (
             <p className="text-gold mt-2 text-[11px] font-semibold uppercase tracking-wider">
               ⚡ Won the Super Over

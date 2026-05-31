@@ -4,7 +4,14 @@ import type { CSSProperties } from "react";
 
 // Shared match visual effects: the ball-result stamp and the Vizag lightning sweep.
 
-export function BallStamp({ kind }: { kind: "capture" | "tie" }) {
+export function BallStamp({ kind }: { kind: "capture" | "tie" | "timeout" }) {
+  if (kind === "timeout") {
+    return (
+      <span className="animate-stamp inline-block rounded-md border-2 border-[#ff6a6a] px-3 py-1 font-display text-base font-black uppercase tracking-widest text-[#ff6a6a] shadow-[0_0_18px_rgba(255,106,106,0.5)]">
+        ⏱ Time Up
+      </span>
+    );
+  }
   if (kind === "tie") {
     return (
       <span className="animate-stamp inline-block rounded-md border-2 border-white/40 px-3 py-1 font-display text-sm font-black uppercase tracking-widest text-white/70">

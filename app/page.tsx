@@ -45,6 +45,9 @@ export default function Home() {
   const [scoreP1, setScoreP1] = useState(0);
   const [scoreP2, setScoreP2] = useState(0);
   const [results, setResults] = useState<("p1" | "p2" | "tie" | null)[]>([]);
+  const [strikesP1, setStrikesP1] = useState(0);
+  const [strikesP2, setStrikesP2] = useState(0);
+  const [forfeitWinner, setForfeitWinner] = useState<1 | 2 | null>(null);
 
   function startMatch() {
     setHands(deal());
@@ -52,6 +55,9 @@ export default function Home() {
     setScoreP1(0);
     setScoreP2(0);
     setResults([]);
+    setStrikesP1(0);
+    setStrikesP2(0);
+    setForfeitWinner(null);
     setScreen("match");
   }
 
@@ -65,10 +71,13 @@ export default function Home() {
     setScoreP1(0);
     setScoreP2(0);
     setResults([]);
+    setStrikesP1(0);
+    setStrikesP2(0);
+    setForfeitWinner(null);
     setScreen("name");
   }
 
-  function onResolve(winner: 1 | 2 | "tie") {
+  function onResolve(winner: 1 | 2 | "tie", timedOutAttacker?: 1 | 2) {
     if (winner === 1) setScoreP1((s) => s + 1);
     else if (winner === 2) setScoreP2((s) => s + 1);
     setResults((prev) => {
@@ -76,10 +85,24 @@ export default function Home() {
       next[round] = winner === "tie" ? "tie" : winner === 1 ? "p1" : "p2";
       return next;
     });
+    // A timeout is a strike against the attacker; two strikes forfeits the match.
+    if (timedOutAttacker === 1) {
+      setStrikesP1((s) => {
+        const n = s + 1;
+        if (n >= 2) setForfeitWinner(2);
+        return n;
+      });
+    } else if (timedOutAttacker === 2) {
+      setStrikesP2((s) => {
+        const n = s + 1;
+        if (n >= 2) setForfeitWinner(1);
+        return n;
+      });
+    }
   }
 
   function onNext() {
-    if (round + 1 >= TOTAL_ROUNDS) {
+    if (forfeitWinner || round + 1 >= TOTAL_ROUNDS) {
       setScreen("result");
     } else {
       setRound((r) => r + 1);
@@ -159,6 +182,8 @@ export default function Home() {
           round={round}
           scoreP1={scoreP1}
           scoreP2={scoreP2}
+          strikesP1={strikesP1}
+          strikesP2={strikesP2}
           results={results}
           onResolve={onResolve}
           onNext={onNext}
@@ -171,6 +196,7 @@ export default function Home() {
           p2Name={p2}
           scoreP1={scoreP1}
           scoreP2={scoreP2}
+          forfeitWinner={forfeitWinner}
           p1FirstCard={hands.p1Deck[0]}
           p2FirstCard={hands.p2Deck[0]}
           onRematch={rematch}

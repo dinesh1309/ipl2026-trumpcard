@@ -31,6 +31,7 @@ export const STATS: StatDef[] = [
 export const TOTAL_ROUNDS = 8;
 export const PHASE_BOOST = 0.25; // 25%
 export const VIZAG_BONUS = 0.1; // 10%
+export const TURN_SECONDS = 20; // attacker has 20s to pick, else loses the ball
 
 export function phaseForRound(roundIndex: number): Phase {
   if (roundIndex <= 2) return "powerplay"; // 0-2
