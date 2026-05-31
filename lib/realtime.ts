@@ -17,8 +17,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
-  limit,
   runTransaction,
   serverTimestamp,
   type Unsubscribe,
@@ -135,14 +133,17 @@ export async function attemptMatchmake(clientId: string): Promise<string | null>
   if (!db) return null;
 
   // Firestore transactions can't run queries, so find a candidate first.
-  const q = query(
-    collection(db, "players"),
-    where("status", "==", "waiting"),
-    orderBy("createdAt"),
-    limit(5)
-  );
+  // Filter only on status (no composite index needed) and pick the oldest other
+  // waiting player by sorting client-side.
+  const q = query(collection(db, "players"), where("status", "==", "waiting"));
   const snap = await getDocs(q);
-  const candidate = snap.docs.find((d) => d.id !== clientId);
+  const candidate = snap.docs
+    .filter((d) => d.id !== clientId)
+    .sort(
+      (a, b) =>
+        (a.data().createdAt?.toMillis?.() ?? 0) -
+        (b.data().createdAt?.toMillis?.() ?? 0)
+    )[0];
   if (!candidate) return null;
 
   const matchId = newId();
