@@ -14,8 +14,12 @@ import { NameEntry } from "@/components/NameEntry";
 import { Lobby } from "@/components/Lobby";
 import { MatchScreen } from "@/components/MatchScreen";
 import { ResultScreen } from "@/components/ResultScreen";
+import { OnlineGame } from "@/components/OnlineGame";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import type { Card } from "@/lib/cards";
 import { selectMatchDeck, TOTAL_ROUNDS } from "@/lib/engine";
+
+type Mode = "choose" | "online" | "local";
 
 type Screen = "name" | "lobby" | "match" | "result";
 
@@ -30,6 +34,8 @@ function deal(): Deal {
 }
 
 export default function Home() {
+  // Online mode only appears when Firebase is configured; otherwise straight to pass-and-play.
+  const [mode, setMode] = useState<Mode>(isFirebaseConfigured ? "choose" : "local");
   const [screen, setScreen] = useState<Screen>("name");
   const [p1, setP1] = useState("");
   const [p2, setP2] = useState("");
@@ -70,6 +76,46 @@ export default function Home() {
     } else {
       setRound((r) => r + 1);
     }
+  }
+
+  if (mode === "choose") {
+    return (
+      <main className="floodlight flex min-h-[100svh] w-full flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
+        <div>
+          <h1 className="font-display text-4xl font-bold tracking-tight text-white">
+            IPL <span className="text-gold">2026</span>
+          </h1>
+          <p className="font-display mt-1 text-lg tracking-[0.3em] text-white/70">
+            TRUMP CARDS
+          </p>
+          <p className="mt-2 text-xs uppercase tracking-[0.3em] text-[var(--ink-dim)]">
+            Vizag Edition
+          </p>
+        </div>
+        <div className="flex w-full max-w-xs flex-col gap-3">
+          <button
+            onClick={() => setMode("online")}
+            className="font-display rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
+          >
+            Play Online
+          </button>
+          <button
+            onClick={() => setMode("local")}
+            className="font-display rounded-2xl border border-[var(--hair)] bg-black/30 py-4 text-base font-bold uppercase tracking-widest text-white"
+          >
+            Pass &amp; Play
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (mode === "online") {
+    return (
+      <main className="floodlight flex w-full flex-1 flex-col">
+        <OnlineGame onExit={() => setMode("choose")} />
+      </main>
+    );
   }
 
   return (

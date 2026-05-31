@@ -16,8 +16,6 @@ export function Lobby({
   onStart: () => void;
   onBack: () => void;
 }) {
-  const [open, setOpen] = useState(true);
-
   return (
     <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-6 py-8">
       {/* Header */}
@@ -46,78 +44,8 @@ export function Lobby({
       </div>
 
       {/* How to play */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--hair)] bg-black/30">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-5 py-4 text-left"
-        >
-          <span className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">
-            How to Play
-          </span>
-          <span
-            className={`text-gold text-xs transition-transform duration-300 ${
-              open ? "rotate-180" : ""
-            }`}
-          >
-            ▼
-          </span>
-        </button>
-
-        <div
-          className={`grid transition-all duration-300 ease-out ${
-            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="space-y-3 px-5 pb-5 text-sm leading-relaxed text-[var(--ink-dim)]">
-              <Rule n="1">
-                Each player is dealt <b className="text-white">8 cards</b>. The
-                system fixes the order — no shuffling your own hand.
-              </Rule>
-              <Rule n="2">
-                <b className="text-white">8 balls</b> across three phases:
-                <span className="mt-2 block space-y-1.5">
-                  <PhaseLine
-                    range="Balls 1–3"
-                    name="Powerplay"
-                    note="Batting stats +25%"
-                    color="#3ddc84"
-                  />
-                  <PhaseLine
-                    range="Balls 4–6"
-                    name="Normal"
-                    note="No boost"
-                    color="#9fb0d0"
-                  />
-                  <PhaseLine
-                    range="Balls 7–8"
-                    name="Death Over"
-                    note="Bowling stats +25%"
-                    color="#ff6a6a"
-                  />
-                </span>
-              </Rule>
-              <Rule n="3">
-                Turns alternate — one player <b className="text-white">attacks</b>{" "}
-                each ball and picks a stat. The opponent&apos;s card stays{" "}
-                <b className="text-white">hidden</b> until the pick is locked.
-              </Rule>
-              <Rule n="4">
-                Higher value wins —{" "}
-                <b className="text-white">except Economy, Bowl Avg &amp; Bowl SR</b>,
-                where lower wins.
-              </Rule>
-              <Rule n="5">
-                <span className="text-gold">⚡ Vizag</span> cards get a{" "}
-                <b className="text-white">+10%</b> edge on every stat.
-              </Rule>
-              <Rule n="6">
-                Most cards <b className="text-white">captured</b> after 8 balls
-                wins the match.
-              </Rule>
-            </div>
-          </div>
-        </div>
+      <div className="mt-6">
+        <HowToPlay defaultOpen />
       </div>
 
       <button
@@ -127,6 +55,71 @@ export function Lobby({
         Start Match
       </button>
     </section>
+  );
+}
+
+/** Collapsible rules panel, shared by the pass-and-play lobby and the online flow. */
+export function HowToPlay({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[var(--hair)] bg-black/30">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left"
+      >
+        <span className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">
+          How to Play
+        </span>
+        <span
+          className={`text-gold text-xs transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          ▼
+        </span>
+      </button>
+
+      <div
+        className={`grid transition-all duration-300 ease-out ${
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-3 px-5 pb-5 text-left text-sm leading-relaxed text-[var(--ink-dim)]">
+            <Rule n="1">
+              Each player is dealt <b className="text-white">8 cards</b>. The system
+              fixes the order — no shuffling your own hand.
+            </Rule>
+            <Rule n="2">
+              <b className="text-white">8 balls</b> across three phases:
+              <span className="mt-2 block space-y-1.5">
+                <PhaseLine range="Balls 1–3" name="Powerplay" note="Batting stats +25%" color="#3ddc84" />
+                <PhaseLine range="Balls 4–6" name="Normal" note="No boost" color="#9fb0d0" />
+                <PhaseLine range="Balls 7–8" name="Death Over" note="Bowling stats +25%" color="#ff6a6a" />
+              </span>
+            </Rule>
+            <Rule n="3">
+              Turns alternate — one player <b className="text-white">attacks</b> each
+              ball and picks a stat. The opponent&apos;s card stays{" "}
+              <b className="text-white">hidden</b> until the pick is locked.
+            </Rule>
+            <Rule n="4">
+              Higher value wins —{" "}
+              <b className="text-white">except Economy, Bowl Avg &amp; Bowl SR</b>, where
+              lower wins.
+            </Rule>
+            <Rule n="5">
+              <span className="text-gold">⚡ Vizag</span> cards get a{" "}
+              <b className="text-white">+10%</b> edge on every stat.
+            </Rule>
+            <Rule n="6">
+              Most cards <b className="text-white">captured</b> after 8 balls wins the
+              match.
+            </Rule>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

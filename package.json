@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "firebase": "^12.14.0",
     "html5-qrcode": "^2.3.8",
     "next": "16.2.6",
     "qrcode": "^1.5.4",
