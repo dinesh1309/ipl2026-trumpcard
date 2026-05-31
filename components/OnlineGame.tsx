@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
+import { TappableCard } from "@/components/TappableCard";
 import { BallStamp, VizagStrike, WinSparks } from "@/components/MatchFx";
 import { HowToPlay } from "@/components/Lobby";
 import {
@@ -16,7 +17,6 @@ import {
   TOTAL_ROUNDS,
   phaseForRound,
   effectiveValue,
-  isMissing,
   type Phase,
 } from "@/lib/engine";
 import {
@@ -317,9 +317,6 @@ function OnlineMatch({
       : outcome.attackerMissing
     : false;
 
-  const battingStats = STATS.filter((s) => s.group === "batting");
-  const bowlingStats = STATS.filter((s) => s.group === "bowling");
-
   return (
     <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
       <PhaseIntro round={match.round} />
@@ -408,61 +405,23 @@ function OnlineMatch({
             outcome && !iWonBall && outcome.winner !== "tie" ? "opacity-55 saturate-50" : ""
           }`}
         >
-          <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} />
+          {amAttacker && !outcome ? (
+            <TappableCard
+              card={myCard}
+              phase={phase}
+              onPick={(s) => submitPick(matchId, match.round, s.key, clientId)}
+            />
+          ) : (
+            <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} />
+          )}
           {outcome && myCard.vizag && <VizagStrike key={`me-${match.round}`} />}
         </div>
 
-        {/* Attacker stat picker */}
-        {amAttacker && !outcome && (
-          <div className="mt-2 rounded-2xl border border-[var(--hair)] bg-black/30 p-2">
-            {[battingStats, bowlingStats].map((group, gi) => (
-              <div key={gi} className={gi ? "mt-2" : ""}>
-                <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/50">
-                  {gi === 0 ? "Batting" : "Bowling"}
-                  {((gi === 0 && phase === "powerplay") ||
-                    (gi === 1 && phase === "deathover")) && (
-                    <span className="text-gold ml-1">+25%</span>
-                  )}
-                </p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {group.map((s) => {
-                    if (isMissing(myCard, s)) {
-                      return (
-                        <div
-                          key={s.key}
-                          className="stat-row cursor-not-allowed opacity-35"
-                          title="Did not bowl"
-                        >
-                          <span className="stat-row__label">{s.label}</span>
-                          <span className="stat-row__value">—</span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <button
-                        key={s.key}
-                        onClick={() =>
-                          submitPick(matchId, match.round, s.key, clientId)
-                        }
-                        className="stat-row text-left transition hover:bg-[var(--gold)]/15 hover:ring-1 hover:ring-[var(--gold)]/40 active:scale-[0.97]"
-                      >
-                        <span className="stat-row__label">{s.label}</span>
-                        <span className="stat-row__value">
-                          {fmt(round1(effectiveValue(myCard, s, phase)))}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {amAttacker && !outcome ? null : !outcome ? (
+        {!amAttacker && !outcome && (
           <p className="mt-2 text-center text-xs text-[var(--ink-dim)]">
             Opponent is choosing a stat…
           </p>
-        ) : null}
+        )}
       </div>
 
       <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
