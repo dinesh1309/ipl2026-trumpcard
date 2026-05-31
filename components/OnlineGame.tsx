@@ -377,21 +377,29 @@ function OnlineMatch({
         </span>
       </div>
 
-      {/* Turn indicator */}
-      <div className="mt-3 text-center text-sm text-[var(--ink-dim)]">
-        {outcome ? (
-          <span>
-            <span className="font-display font-bold text-white">{pickedStat?.label}</span> ·{" "}
-            {pickedStat?.lowerWins ? "lower wins" : "higher wins"}
+      {/* Turn banner — prominent so each player knows when it's their move */}
+      {outcome ? (
+        <div className="mt-3 text-center text-sm text-[var(--ink-dim)]">
+          <span className="font-display font-bold text-white">{pickedStat?.label}</span> ·{" "}
+          {pickedStat?.lowerWins ? "lower wins" : "higher wins"}
+        </div>
+      ) : amAttacker ? (
+        <div className="animate-reveal mt-3 flex items-center justify-center gap-2 rounded-xl border border-[var(--gold)]/45 bg-[var(--gold)]/10 py-3 shadow-[0_0_20px_-6px_rgba(245,197,24,0.5)]">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" />
+          <span className="font-display text-base font-bold uppercase tracking-[0.2em] text-gold">
+            Your Turn
           </span>
-        ) : amAttacker ? (
-          <span>
-            <span className="font-display font-bold text-gold">Your turn</span> — tap a stat
+          <span className="text-xs text-[var(--ink-dim)]">— pick a stat to attack</span>
+        </div>
+      ) : (
+        <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[var(--hair)] bg-black/30 py-3">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white/40" />
+          <span className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
+            {oppName}&apos;s turn
           </span>
-        ) : (
-          <span>Waiting for {oppName} to play…</span>
-        )}
-      </div>
+          <span className="text-xs text-[var(--ink-dim)]">— waiting…</span>
+        </div>
+      )}
 
       {/* Cards: stacked on mobile, side-by-side on laptop */}
       <div className="mt-3 flex flex-col md:flex-row md:items-start md:gap-5">
