@@ -1,162 +1,130 @@
-// Agent 3 (Game Engine) — deterministic Cricket War.
-// Given a shared seed + mode, BOTH phones replay the identical match locally.
-// No backend: the 8 cards are public and dealing is seeded, so each device can
-// compute the full game and just render its own player's point of view.
+// Engine — IPL 2026 Trump Card game logic.
+// Pure, dependency-free game engine. Randomness in selectMatchDeck uses the
+// JS runtime RNG (allowed in app code).
 
-import { CARDS, Card, Metric } from "./cards";
+import type { Card } from "@/lib/cards";
+import { CARD_POOL, ANCHOR_ID } from "@/lib/cards";
 
-export type Mode = "powerplay" | "deathover";
+export type Phase = "powerplay" | "normal" | "deathover";
 
-export const MODE_POOLS: Record<Mode, Metric[]> = {
-  powerplay: ["sixes", "fours", "strikeRate", "runs", "average"],
-  deathover: ["wickets", "economy", "dotBallPct"],
-};
-
-// Lower-is-better metrics (only economy here).
-const LOWER_WINS: Metric[] = ["economy"];
-
-const ROUND_CAP = 50; // safety net so a demo can never hang
-const VIZAG_BONUS = 0.1; // +10% favorable nudge
-
-// --- seeded RNG (mulberry32): deterministic across devices ---
-export function seededRng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+export interface StatDef {
+  key: string;
+  label: string;
+  group: "batting" | "bowling";
+  lowerWins: boolean;
+  get: (c: Card) => number;
 }
 
-// Turn a short QR string seed ("8f3a2") into a 32-bit int, deterministically.
-export function hashSeed(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+// 5 batting (higher wins) + 4 bowling = 9 stats.
+export const STATS: StatDef[] = [
+  { key: "runs", label: "Runs", group: "batting", lowerWins: false, get: (c) => c.batting.runs },
+  { key: "average", label: "Bat Avg", group: "batting", lowerWins: false, get: (c) => c.batting.average },
+  { key: "strikeRate", label: "Strike Rate", group: "batting", lowerWins: false, get: (c) => c.batting.strikeRate },
+  { key: "fours", label: "Fours", group: "batting", lowerWins: false, get: (c) => c.batting.fours },
+  { key: "sixes", label: "Sixes", group: "batting", lowerWins: false, get: (c) => c.batting.sixes },
+  { key: "wickets", label: "Wickets", group: "bowling", lowerWins: false, get: (c) => c.bowling.wickets },
+  { key: "economy", label: "Economy", group: "bowling", lowerWins: true, get: (c) => c.bowling.economy },
+  { key: "bowlAverage", label: "Bowl Avg", group: "bowling", lowerWins: true, get: (c) => c.bowling.average },
+  { key: "bowlStrikeRate", label: "Bowl SR", group: "bowling", lowerWins: true, get: (c) => c.bowling.strikeRate },
+];
+
+export const TOTAL_ROUNDS = 8;
+export const PHASE_BOOST = 0.25; // 25%
+export const VIZAG_BONUS = 0.1; // 10%
+
+export function phaseForRound(roundIndex: number): Phase {
+  if (roundIndex <= 2) return "powerplay"; // 0-2
+  if (roundIndex <= 5) return "normal"; // 3-5
+  return "deathover"; // 6-7
+}
+
+export function selectMatchDeck(pool: Card[] = CARD_POOL): Card[] {
+  const anchor = pool.find((c) => c.id === ANCHOR_ID);
+  if (!anchor) {
+    throw new Error(`selectMatchDeck: anchor card '${ANCHOR_ID}' not found in pool`);
   }
-  return h >>> 0;
+
+  // Fill the other 15 by randomly sampling distinct cards (excluding the anchor).
+  const others = pool.filter((c) => c.id !== anchor.id);
+  const filler = shuffle(others).slice(0, 15);
+
+  // Shuffle all 16. first 8 = Player 1 hand, next 8 = Player 2 hand.
+  return shuffle([anchor, ...filler]);
 }
 
-function shuffle<T>(arr: T[], rng: () => number): T[] {
-  const a = [...arr];
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
+    const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
 
-function metricValue(card: Card, m: Metric): number {
-  if (m === "wickets" || m === "economy" || m === "dotBallPct") return card.bowling[m];
-  return card.batting[m];
+export function effectiveValue(card: Card, stat: StatDef, phase: Phase): number {
+  const v = stat.get(card);
+  const inPhase =
+    (phase === "powerplay" && stat.group === "batting") ||
+    (phase === "deathover" && stat.group === "bowling");
+  const boostFactor = inPhase ? (stat.lowerWins ? 1 - PHASE_BOOST : 1 + PHASE_BOOST) : 1;
+  const vizagFactor = card.vizag ? (stat.lowerWins ? 1 - VIZAG_BONUS : 1 + VIZAG_BONUS) : 1;
+  return v * boostFactor * vizagFactor;
 }
 
-// Apply the Vizag bonus in the favorable direction for the metric.
-function effectiveValue(card: Card, m: Metric): number {
-  const raw = metricValue(card, m);
-  if (!card.vizag) return raw;
-  return LOWER_WINS.includes(m) ? raw * (1 - VIZAG_BONUS) : raw * (1 + VIZAG_BONUS);
+/**
+ * "Did not bowl" guard. A lower-wins bowling stat (economy / bowl avg / bowl SR)
+ * of 0 means the player never bowled — that is NOT a perfect (lowest) value, so it
+ * must never win a lower-wins comparison. A batsman's 0 economy should LOSE to a
+ * real bowler's 7, not beat it. Higher-wins stats (e.g. wickets) keep 0 as the
+ * legitimate worst, so they need no special handling.
+ */
+export function isMissing(card: Card, stat: StatDef): boolean {
+  return stat.lowerWins && stat.get(card) === 0;
 }
 
-export interface RoundResult {
-  index: number;
-  metric: Metric;
-  p1Card: Card;
-  p2Card: Card;
-  p1Value: number; // effective (post-bonus) value shown
-  p2Value: number;
-  winner: 1 | 2;
-  p1Vizag: boolean;
-  p2Vizag: boolean;
+export interface RoundOutcome {
+  attackerValue: number;
+  defenderValue: number;
+  attackerMissing: boolean; // attacker did not bowl → no real value for this stat
+  defenderMissing: boolean;
+  winner: "attacker" | "defender" | "tie";
 }
 
-export interface MatchResult {
-  mode: Mode;
-  seed: string;
-  rounds: RoundResult[];
-  winner: 1 | 2;
-  hitCap: boolean;
-}
+export function resolveRound(
+  attacker: Card,
+  defender: Card,
+  stat: StatDef,
+  phase: Phase
+): RoundOutcome {
+  const attackerMissing = isMissing(attacker, stat);
+  const defenderMissing = isMissing(defender, stat);
 
-// Pick a metric that produces a decisive result; re-roll on tie.
-function decisiveRound(
-  p1: Card,
-  p2: Card,
-  pool: Metric[],
-  rng: () => number
-): { metric: Metric; winner: 1 | 2; v1: number; v2: number } {
-  for (let attempt = 0; attempt < pool.length + 2; attempt++) {
-    const metric = pool[Math.floor(rng() * pool.length)];
-    const v1 = effectiveValue(p1, metric);
-    const v2 = effectiveValue(p2, metric);
-    const lower = LOWER_WINS.includes(metric);
-    if (v1 === v2) continue; // tie → re-roll a different metric
-    const p1Wins = lower ? v1 < v2 : v1 > v2;
-    return { metric, winner: p1Wins ? 1 : 2, v1, v2 };
-  }
-  // Extremely unlikely fallback: pick first metric, P1 wins ties.
-  const metric = pool[0];
-  return { metric, winner: 1, v1: effectiveValue(p1, metric), v2: effectiveValue(p2, metric) };
-}
+  const aRaw = round1(effectiveValue(attacker, stat, phase));
+  const dRaw = round1(effectiveValue(defender, stat, phase));
 
-export function playMatch(seedStr: string, mode: Mode): MatchResult {
-  const rng = seededRng(hashSeed(seedStr));
-  const dealt = shuffle(CARDS, rng);
-  let deck1 = dealt.slice(0, 4).map((c) => c.id);
-  let deck2 = dealt.slice(4, 8).map((c) => c.id);
+  // Comparison values: a missing lower-wins stat is treated as the WORST possible,
+  // so a non-bowler's 0 can never beat a real bowling figure.
+  const a = attackerMissing ? Infinity : aRaw;
+  const d = defenderMissing ? Infinity : dRaw;
 
-  const pool = MODE_POOLS[mode];
-  const rounds: RoundResult[] = [];
-  let hitCap = false;
-  const byId = (id: string) => CARDS.find((c) => c.id === id)!;
-
-  let i = 0;
-  while (deck1.length > 0 && deck2.length > 0) {
-    if (i >= ROUND_CAP) {
-      hitCap = true;
-      break;
-    }
-    const c1 = byId(deck1[0]);
-    const c2 = byId(deck2[0]);
-    const { metric, winner, v1, v2 } = decisiveRound(c1, c2, pool, rng);
-
-    rounds.push({
-      index: i,
-      metric,
-      p1Card: c1,
-      p2Card: c2,
-      p1Value: Math.round(v1 * 100) / 100,
-      p2Value: Math.round(v2 * 100) / 100,
-      winner,
-      p1Vizag: c1.vizag,
-      p2Vizag: c2.vizag,
-    });
-
-    // Capture: winner takes both cards to the bottom of their deck.
-    deck1 = deck1.slice(1);
-    deck2 = deck2.slice(1);
-    if (winner === 1) deck1 = [...deck1, c1.id, c2.id];
-    else deck2 = [...deck2, c2.id, c1.id];
-    i++;
+  let winner: "attacker" | "defender" | "tie";
+  if (a === d) {
+    winner = "tie";
+  } else if (stat.lowerWins) {
+    winner = a < d ? "attacker" : "defender";
+  } else {
+    winner = a > d ? "attacker" : "defender";
   }
 
-  let winner: 1 | 2;
-  if (hitCap) winner = deck1.length >= deck2.length ? 1 : 2;
-  else winner = deck1.length > 0 ? 1 : 2;
-
-  return { mode, seed: seedStr, rounds, winner, hitCap };
+  return {
+    attackerValue: aRaw,
+    defenderValue: dRaw,
+    attackerMissing,
+    defenderMissing,
+    winner,
+  };
 }
 
-export const METRIC_LABEL: Record<Metric, string> = {
-  sixes: "Sixes",
-  fours: "Fours",
-  strikeRate: "Strike Rate",
-  runs: "Runs",
-  average: "Average",
-  wickets: "Wickets",
-  economy: "Economy",
-  dotBallPct: "Dot Ball %",
-};
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}

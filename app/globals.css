@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
+/* ---- IPL 2026 Trump Cards — design tokens ---- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-0: #05070f;        /* deep stadium black */
+  --bg-1: #0a0f1f;        /* navy */
+  --bg-2: #0e1530;        /* lit navy */
+  --ink: #f4f6fb;         /* primary text */
+  --ink-dim: #aab3c8;     /* secondary text */
+  --gold: #f5c518;        /* highlight / winning stat */
+  --gold-soft: #ffe27a;   /* gold gradient top */
+  --hair: rgba(255, 255, 255, 0.10); /* fine ring/border */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-0);
+  --color-foreground: var(--ink);
+  --color-gold: var(--gold);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), "Oswald", ui-sans-serif, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color: var(--ink);
+  /* Floodlight: a soft radial glow over the deep navy/black stadium gradient. */
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(125, 160, 255, 0.16), transparent 60%),
+    radial-gradient(90% 60% at 50% 0%, rgba(245, 197, 24, 0.06), transparent 55%),
+    linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 38%, var(--bg-0) 100%);
+  background-attachment: fixed;
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: transparent;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Utilities ---- */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.text-gold {
+  color: var(--gold);
+}
+
+/* Floodlight backdrop for full-screen sections (re-usable beyond html bg). */
+.floodlight {
+  position: relative;
+  background:
+    radial-gradient(100% 70% at 50% -10%, rgba(125, 160, 255, 0.14), transparent 60%),
+    linear-gradient(180deg, var(--bg-2), var(--bg-0));
+}
+
+/* Premium foil sheen sweep used on card backs / accents. */
+.foil-sheen {
+  background-image: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.10) 45%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.10) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
+}
+
+/* A single stat line inside a card. */
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.42rem 0.7rem;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 0.55rem;
+  transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.stat-row__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.stat-row__value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The winning / highlighted stat glows gold. */
+.stat-row--hi {
+  background: linear-gradient(180deg, rgba(245, 197, 24, 0.95), rgba(214, 168, 8, 0.95));
+  box-shadow: 0 0 0 1px rgba(245, 197, 24, 0.55), 0 8px 24px -8px rgba(245, 197, 24, 0.6);
+  color: #161003;
+}
+.stat-row--hi .stat-row__label {
+  color: #2a1f02;
+}
+.stat-row--hi .stat-row__value {
+  color: #161003;
+  font-weight: 800;
+}
+
+/* ---- Motion (restrained) ---- */
+@keyframes reveal-fade {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-reveal {
+  animation: reveal-fade 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes card-flip {
+  from { transform: rotateY(90deg); opacity: 0; }
+  to   { transform: rotateY(0deg); opacity: 1; }
+}
+.animate-flip {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  animation: card-flip 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheen-sweep {
+  to { background-position: -150% 0; }
+}
+.animate-sheen {
+  animation: sheen-sweep 3.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal,
+  .animate-flip,
+  .animate-sheen {
+    animation: none;
+  }
 }
