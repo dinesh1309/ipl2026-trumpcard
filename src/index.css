@@ -1,0 +1,340 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Teko:wght@500;700&display=swap');
+
+:root {
+  /* Color Tokens */
+  --bg-dark-stadium: radial-gradient(circle at center, #0e1e38 0%, #060b14 100%);
+  --neon-blue: #00f0ff;
+  --neon-blue-glow: rgba(0, 240, 255, 0.45);
+  --neon-gold: #ffd700;
+  --neon-gold-glow: rgba(255, 215, 0, 0.45);
+  --neon-red: #ff3b30;
+  --neon-red-glow: rgba(255, 59, 48, 0.45);
+  
+  --silver-glow: rgba(192, 192, 192, 0.35);
+  
+  /* Fonts */
+  --font-display: 'Teko', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(6, 15, 30, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --glass-blur: blur(16px) saturate(180%);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-dark-stadium);
+  color: #f8f9fa;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background overlay scanlines & stadium grid */
+body::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 100;
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+/* Teko headers for sports look */
+h1, h2, h3, .sports-header {
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Glassmorphism containers */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 16px;
+}
+
+/* Theme Neon Blue */
+.blue-neon-border {
+  border: 1.5px solid var(--neon-blue);
+  box-shadow: 0 0 15px var(--neon-blue-glow), inset 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+.blue-neon-text {
+  color: var(--neon-blue);
+  text-shadow: 0 0 8px var(--neon-blue-glow);
+}
+
+.blue-neon-btn {
+  background: transparent;
+  color: var(--neon-blue);
+  border: 2px solid var(--neon-blue);
+  border-radius: 30px;
+  padding: 12px 30px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  cursor: pointer;
+}
+
+.blue-neon-btn:hover {
+  background: var(--neon-blue);
+  color: #030712;
+  box-shadow: 0 0 25px var(--neon-blue);
+  transform: translateY(-2px);
+}
+
+/* Theme Neon Gold */
+.gold-neon-border {
+  border: 1.5px solid var(--neon-gold);
+  box-shadow: 0 0 15px var(--neon-gold-glow), inset 0 0 10px rgba(255, 215, 0, 0.15);
+}
+
+.gold-neon-text {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px var(--neon-gold-glow);
+}
+
+.gold-neon-btn {
+  background: transparent;
+  color: var(--neon-gold);
+  border: 2px solid var(--neon-gold);
+  border-radius: 30px;
+  padding: 12px 30px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+  cursor: pointer;
+}
+
+.gold-neon-btn:hover {
+  background: var(--neon-gold);
+  color: #030712;
+  box-shadow: 0 0 25px var(--neon-gold);
+  transform: translateY(-2px);
+}
+
+/* Theme Neon Red (Death Over) */
+.red-neon-border {
+  border: 1.5px solid var(--neon-red);
+  box-shadow: 0 0 15px var(--neon-red-glow), inset 0 0 10px rgba(255, 59, 48, 0.15);
+}
+
+.red-neon-text {
+  color: var(--neon-red);
+  text-shadow: 0 0 8px var(--neon-red-glow);
+}
+
+.red-neon-btn {
+  background: transparent;
+  color: var(--neon-red);
+  border: 2px solid var(--neon-red);
+  border-radius: 30px;
+  padding: 12px 30px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 59, 48, 0.2);
+  cursor: pointer;
+}
+
+.red-neon-btn:hover {
+  background: var(--neon-red);
+  color: #ffffff;
+  box-shadow: 0 0 25px var(--neon-red);
+  transform: translateY(-2px);
+}
+
+/* Card 3D Flip System */
+.flip-card {
+  background-color: transparent;
+  perspective: 1000px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden; /* Safari */
+  backface-visibility: hidden;
+  border-radius: 16px;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Card Back Premium Design */
+.card-back-premium {
+  background: linear-gradient(135deg, #060e1a 0%, #0d1e38 100%);
+  border: 2px solid var(--neon-gold);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-back-premium::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 2px, transparent 2px, transparent 10px);
+}
+
+/* Custom Micro-Animations */
+@keyframes pulseGlow {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; filter: brightness(1.2); }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+.pulsing-glow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes stadiumLightRotate {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.stadium-light-beam {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 300px;
+  height: 1000px;
+  background: radial-gradient(ellipse at top, rgba(0, 240, 255, 0.12) 0%, transparent 80%);
+  transform-origin: top center;
+  transform: translate(-50%, 0) rotate(15deg);
+  animation: stadiumLightRotate 15s infinite ease-in-out alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stadium-light-beam-gold {
+  position: absolute;
+  top: 0;
+  left: 30%;
+  width: 400px;
+  height: 1000px;
+  background: radial-gradient(ellipse at top, rgba(255, 215, 0, 0.08) 0%, transparent 80%);
+  transform-origin: top center;
+  transform: translate(-50%, 0) rotate(-20deg);
+  animation: stadiumLightRotate 20s infinite ease-in-out alternate-reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Mobile responsive card layouts */
+.battle-arena-layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 92vh;
+  padding: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.stat-row:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.02);
+}
+
+.stat-row.selected {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 10px var(--neon-blue-glow);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #030712;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Utility to ensure bootstrap works with our theme */
+.btn-primary-gaming {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 1.5rem;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, var(--neon-blue) 0%, #0077ff 100%);
+  border: none;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+  transition: all 0.3s ease;
+}
+
+.btn-primary-gaming:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 25px var(--neon-blue);
+  filter: brightness(1.1);
+}
