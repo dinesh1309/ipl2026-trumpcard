@@ -29,12 +29,14 @@ export function CardFace({
   shownValue,
   revealed = true,
   size = "full",
+  fill = false,
 }: {
   card: Card;
   highlightStatKey?: string;
   shownValue?: number;
   revealed?: boolean;
   size?: "full" | "mini";
+  fill?: boolean; // stretch to the parent's height instead of using a fixed aspect
 }) {
   const accent = card.accent;
   const chipDark = !isLight(accent);
@@ -44,7 +46,7 @@ export function CardFace({
     return (
       <div
         className={`relative w-full select-none overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] ${
-          size === "mini" ? "aspect-[3/4]" : "aspect-[3/4.35]"
+          fill ? "h-full min-h-full" : size === "mini" ? "aspect-[3/4]" : "aspect-[3/4.35]"
         }`}
         style={{
           background:

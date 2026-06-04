@@ -185,8 +185,15 @@ export function MatchScreen({
   const attackerCardVisible = revealed || !botAttacking;
   const defenderCardVisible = revealed || botAttacking;
 
+  // On laptop/large screens everything must fit in one viewport (no scroll).
+  // During play the cards can be roomy; once revealed, the outcome banner + Next
+  // appear below, so the cards shrink to make room.
+  const cardWidthCls = revealed
+    ? "lg:max-w-[235px] xl:max-w-[265px] 2xl:max-w-[300px]"
+    : "lg:max-w-[290px] xl:max-w-[330px] 2xl:max-w-[370px]";
+
   const attackerBlock = (
-    <div className="w-full md:flex-1 lg:max-w-sm lg:flex-none lg:shrink-0">
+    <div className={`w-full md:flex-1 lg:flex lg:flex-none lg:shrink-0 lg:flex-col ${cardWidthCls}`}>
       <CardLabel
         name={attackerName}
         tag={attackerIsP1 ? "P1" : "P2"}
@@ -194,7 +201,7 @@ export function MatchScreen({
         win={outcome?.winner === "attacker"}
       />
       <div
-        className={`relative mt-1.5 transition duration-300 ${
+        className={`relative mt-1.5 transition duration-300 lg:min-h-0 lg:flex-1 ${
           outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
         }`}
       >
@@ -206,7 +213,7 @@ export function MatchScreen({
           />
         ) : botAttacking ? (
           // Keep the computer's hand hidden while it decides.
-          <CardFace card={attackerCard} revealed={false} />
+          <CardFace card={attackerCard} revealed={false} fill />
         ) : (
           <TappableCard card={attackerCard} phase={phase} onPick={pickStat} />
         )}
@@ -216,7 +223,7 @@ export function MatchScreen({
   );
 
   const defenderBlock = (
-    <div className="w-full md:flex-1 lg:max-w-sm lg:flex-none lg:shrink-0">
+    <div className={`w-full md:flex-1 lg:flex lg:flex-none lg:shrink-0 lg:flex-col ${cardWidthCls}`}>
       <CardLabel
         name={defenderName}
         tag={attackerIsP1 ? "P2" : "P1"}
@@ -224,7 +231,7 @@ export function MatchScreen({
         win={outcome?.winner === "defender"}
       />
       <div
-        className={`relative mt-1.5 transition duration-300 ${
+        className={`relative mt-1.5 transition duration-300 lg:min-h-0 lg:flex-1 ${
           outcome?.winner === "attacker" ? "opacity-55 saturate-50" : ""
         }`}
       >
@@ -238,7 +245,7 @@ export function MatchScreen({
           // You're defending the computer — your own card stays in view.
           <CardFace card={defenderCard} />
         ) : (
-          <CardFace card={defenderCard} revealed={false} />
+          <CardFace card={defenderCard} revealed={false} fill />
         )}
         {revealed && defenderCard.vizag && <VizagStrike key={`def-${round}`} />}
       </div>
@@ -257,11 +264,11 @@ export function MatchScreen({
   const rightShow = leftIsAttacker ? defenderCardVisible : attackerCardVisible;
 
   return (
-    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
+    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl lg:h-[100svh] lg:min-h-0 lg:overflow-hidden lg:pb-3">
       <PhaseIntro round={round} />
       {/* Phase banner */}
       <div
-        className="relative overflow-hidden rounded-2xl border px-4 py-3"
+        className="relative overflow-hidden rounded-2xl border px-4 py-3 lg:py-2"
         style={{
           borderColor: `${meta.color}55`,
           background: `linear-gradient(120deg, ${meta.color}22, rgba(0,0,0,0.35))`,
@@ -291,12 +298,12 @@ export function MatchScreen({
       </div>
 
       {/* Over-by-over ticker */}
-      <div className="mt-3">
+      <div className="mt-3 lg:mt-2">
         <OverTicker results={results} current={round} />
       </div>
 
       {/* Capture scoreboard */}
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-3 lg:mt-2">
         <ScoreChip
           name={p1Name}
           score={scoreP1}
@@ -314,7 +321,7 @@ export function MatchScreen({
       </div>
 
       {/* Turn indicator + countdown */}
-      <div className="mt-4 text-center">
+      <div className="mt-4 text-center lg:mt-2">
         {!revealed && botAttacking ? (
           <div className="mx-auto flex max-w-xs items-center justify-center gap-2 rounded-xl border border-[var(--hair)] bg-black/30 py-2.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-white/50" />
@@ -362,8 +369,8 @@ export function MatchScreen({
       {/* Cards: stacked on mobile, side-by-side on tablet. On laptop/large
           screens the row goes full-bleed and a big standing player photo flanks
           each card (you on the left, computer on the right). */}
-      <div className="mt-3 lg:mx-[calc(50%-50vw)] lg:w-screen lg:overflow-hidden">
-        <div className="mx-auto flex max-w-md flex-col md:max-w-4xl md:flex-row md:items-start md:gap-5 lg:max-w-none lg:items-end lg:justify-center lg:gap-0 lg:px-4">
+      <div className="mt-3 lg:mx-[calc(50%-50vw)] lg:mt-2 lg:w-screen lg:overflow-hidden">
+        <div className="mx-auto flex max-w-md flex-col md:max-w-4xl md:flex-row md:items-start md:gap-5 lg:max-w-none lg:items-stretch lg:justify-center lg:gap-0 lg:px-4">
           <BigPlayer card={leftCardData} show={leftShow} side="left" />
           {leftBlock}
           <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
@@ -378,9 +385,9 @@ export function MatchScreen({
 
       {/* Outcome banner + Next */}
       {outcome && (
-        <div className="animate-reveal mt-4">
-          <div className="rounded-2xl border border-[var(--hair)] bg-black/45 px-4 py-3 text-center">
-            <div className="mb-1.5 flex justify-center">
+        <div className="animate-reveal mt-4 lg:mt-2">
+          <div className="rounded-2xl border border-[var(--hair)] bg-black/45 px-4 py-3 text-center lg:py-2">
+            <div className="mb-1.5 flex justify-center lg:mb-1">
               <BallStamp
                 kind={timedOut ? "timeout" : outcome.winner === "tie" ? "tie" : "capture"}
               />
@@ -429,7 +436,7 @@ export function MatchScreen({
 
           <button
             onClick={onNext}
-            className="font-display mt-3 w-full rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)] transition active:scale-[0.98]"
+            className="font-display mt-3 w-full rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)] transition active:scale-[0.98] lg:mt-2 lg:py-3"
           >
             {round + 1 >= TOTAL_ROUNDS ? "See Result" : "Next Ball"}
           </button>
@@ -461,8 +468,8 @@ function BigPlayer({
   return (
     <div
       aria-hidden
-      className={`hidden self-end lg:block lg:w-[260px] lg:shrink-0 xl:w-[360px] 2xl:w-[430px] ${
-        side === "left" ? "lg:-mr-10 xl:-mr-14" : "lg:-ml-10 xl:-ml-14"
+      className={`hidden self-end lg:block lg:w-[190px] lg:shrink-0 xl:w-[260px] 2xl:w-[320px] ${
+        side === "left" ? "lg:-mr-8 xl:-mr-10" : "lg:-ml-8 xl:-ml-10"
       }`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
