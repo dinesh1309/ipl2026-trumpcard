@@ -10,7 +10,8 @@ import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
-import { BallStamp, VizagStrike, WinSparks, CapturedPile, useCountUp } from "@/components/MatchFx";
+import { BallStamp, VizagStrike, WinSparks, CapturedPile, useCountUp, Confetti } from "@/components/MatchFx";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { HowToPlay } from "@/components/Lobby";
 import {
   STATS,
@@ -268,8 +269,17 @@ export function OnlineGame({
     const myScore = isP1 ? match.scoreP1 : match.scoreP2;
     const oppScore = isP1 ? match.scoreP2 : match.scoreP1;
     const iWon = match.winner !== "tie" && (match.winner === 1) === isP1;
+    // Player of the Match = the winning side's standout (highest-runs) card.
+    const { p1Deck, p2Deck } = decksFor(match);
+    const potm =
+      match.winner === "tie"
+        ? null
+        : (match.winner === 2 ? p2Deck : p1Deck).reduce((b, c) =>
+            c.batting.runs > b.batting.runs ? c : b,
+          );
     return (
-      <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
+      <section className="relative mx-auto flex min-h-[100svh] w-full max-w-md flex-col items-center justify-center gap-4 overflow-hidden px-5 text-center">
+        {iWon && <Confetti />}
         <div className="relative flex items-center justify-center">
           {iWon && <WinSparks />}
           <span className="text-5xl">
@@ -287,6 +297,20 @@ export function OnlineGame({
         <p className="font-mono text-lg text-white/80">
           {myScore} <span className="text-[var(--ink-dim)]">—</span> {oppScore}
         </p>
+        {potm && (
+          <div className="animate-reveal flex flex-col items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-dim)]">
+              Player of the Match
+            </span>
+            <PlayerAvatar card={potm} className="h-24 w-24 ring-2 ring-[var(--gold)]/40" />
+            <span className="font-display text-base font-bold leading-tight text-white">
+              {potm.name}
+            </span>
+            <span className="text-[11px] uppercase tracking-wider text-[var(--ink-dim)]">
+              {potm.team} · {potm.role}
+            </span>
+          </div>
+        )}
         <button
           onClick={backToLobby}
           className="font-display mt-2 rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] px-8 py-3.5 text-base font-bold uppercase tracking-widest text-[#161003]"

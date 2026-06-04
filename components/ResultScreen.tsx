@@ -6,13 +6,19 @@
 
 import { useState } from "react";
 import type { Card } from "@/lib/cards";
-import { WinSparks } from "@/components/MatchFx";
+import { WinSparks, Confetti } from "@/components/MatchFx";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import {
   STATS,
   phaseForRound,
   effectiveValue,
   resolveRound,
 } from "@/lib/engine";
+
+/** The winner's standout card — highest runs in their hand. */
+function topCard(deck: Card[]): Card {
+  return deck.reduce((best, c) => (c.batting.runs > best.batting.runs ? c : best));
+}
 
 function fmt(v: number): string {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
@@ -29,6 +35,8 @@ export function ResultScreen({
   forfeitWinner,
   p1FirstCard,
   p2FirstCard,
+  p1Deck,
+  p2Deck,
   onRematch,
   onNewPlayers,
 }: {
@@ -39,6 +47,8 @@ export function ResultScreen({
   forfeitWinner: 1 | 2 | null;
   p1FirstCard: Card;
   p2FirstCard: Card;
+  p1Deck: Card[];
+  p2Deck: Card[];
   onRematch: () => void;
   onNewPlayers: () => void;
 }) {
@@ -59,6 +69,8 @@ export function ResultScreen({
     (sd ? sd.winner : scoreP1 > scoreP2 ? 1 : scoreP2 > scoreP1 ? 2 : "tie");
 
   const winnerName = winner === 1 ? p1Name : winner === 2 ? p2Name : null;
+  // Player of the Match = the winner's standout card.
+  const potm = winner === "tie" ? null : topCard(winner === 2 ? p2Deck : p1Deck);
 
   function playSuddenDeath() {
     // Reuse first cards, pick a random stat. Phase = powerplay (ball 1).
@@ -83,7 +95,8 @@ export function ResultScreen({
   }
 
   return (
-    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col items-center justify-center px-6 py-10 text-center">
+    <section className="relative mx-auto flex min-h-[100svh] w-full max-w-md flex-col items-center justify-center overflow-hidden px-6 py-10 text-center">
+      {!tied && <Confetti />}
       <span className="font-display text-gold text-[10px] font-semibold uppercase tracking-[0.4em]">
         IPL 2026 · Vizag Edition
       </span>
@@ -108,7 +121,7 @@ export function ResultScreen({
             </div>
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.3em] text-[var(--ink-dim)]">
-            Player of the Match
+            Winner
           </p>
           <h2 className="font-display animate-reveal mt-1 bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] bg-clip-text text-4xl font-bold tracking-tight text-transparent">
             {winnerName}
@@ -122,6 +135,20 @@ export function ResultScreen({
             <p className="text-gold mt-2 text-[11px] font-semibold uppercase tracking-wider">
               ⚡ Won the Super Over
             </p>
+          )}
+          {potm && (
+            <div className="animate-reveal mt-5 flex flex-col items-center gap-2" style={{ animationDelay: "150ms" }}>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-dim)]">
+                Player of the Match
+              </span>
+              <PlayerAvatar card={potm} className="h-28 w-28 ring-2 ring-[var(--gold)]/40" />
+              <span className="font-display text-lg font-bold leading-tight text-white">
+                {potm.name}
+              </span>
+              <span className="text-[11px] uppercase tracking-wider text-[var(--ink-dim)]">
+                {potm.team} · {potm.role}
+              </span>
+            </div>
           )}
         </>
       )}

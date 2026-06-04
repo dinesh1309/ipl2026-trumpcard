@@ -235,6 +235,8 @@ export default function Home() {
           forfeitWinner={forfeitWinner}
           p1FirstCard={hands.p1Deck[0]}
           p2FirstCard={hands.p2Deck[0]}
+          p1Deck={hands.p1Deck}
+          p2Deck={hands.p2Deck}
           onRematch={rematch}
           onNewPlayers={newPlayers}
         />
