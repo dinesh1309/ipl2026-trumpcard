@@ -3,8 +3,10 @@
 // MobileMatch — phone-only (< md) one-card-flip layout, shared by pass-and-play,
 // vs-Computer and online. Fixed top bar + a single card that flips between the
 // pick view and the duel result + a pinned bottom bar. No scrolling. The flip is
-// driven by `revealed` (no internal state) so it stays in sync with each mode.
+// a half-flip with a content swap at the edge (never shows a backface), so the
+// numbers can't mirror mid-flip; it follows the `revealed` prop.
 
+import { useEffect, useRef, useState } from "react";
 import { TappableCard } from "@/components/TappableCard";
 import { CardFace } from "@/components/CardFace";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -79,6 +81,90 @@ export function MobileMatch({
   const leftUp = useCountUp(left.value, revealed && !timedOut);
   const rightUp = useCountUp(right.value, revealed && !timedOut);
 
+  // Half-flip with a content swap at the edge: rotate the card to 90° (edge-on,
+  // invisible), swap content there, then rotate back from -90° to 0°. Only one
+  // (always front-facing) face is ever shown, so there's no backface to mirror
+  // mid-flip — this fixes the reversed-numbers glitch on mobile.
+  const [face, setFace] = useState<"pick" | "duel">(revealed ? "duel" : "pick");
+  const [angle, setAngle] = useState(0);
+  const [anim, setAnim] = useState(true);
+  const faceRef = useRef(face);
+  useEffect(() => {
+    const target: "pick" | "duel" = revealed ? "duel" : "pick";
+    if (target === faceRef.current) return;
+    setAnim(true);
+    setAngle(90); // phase A: turn current content to edge-on
+    const t = setTimeout(() => {
+      faceRef.current = target;
+      setFace(target); // swap content while edge-on (invisible)
+      setAnim(false);
+      setAngle(-90); // jump to the other edge with no transition
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          setAnim(true);
+          setAngle(0); // phase B: turn new content to flat
+        }),
+      );
+    }, 220);
+    return () => clearTimeout(t);
+  }, [revealed]);
+
+  // The pick card (your card; tappable on your turn, otherwise face-up + waiting).
+  const pickView = frontTappable ? (
+    <TappableCard card={frontCard} phase={phase} onPick={onPick} />
+  ) : (
+    <div className="relative">
+      <CardFace card={frontCard} />
+      {waitingText && (
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 rounded-b-2xl bg-black/65 py-2.5 backdrop-blur-[2px]">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-white/60" />
+          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-white/85">
+            {waitingText}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
+  // The duel result. Snapshotted in a ref so the flip *back* to the next ball can
+  // show the last result turning away (props change to the new ball immediately).
+  const duelView = (
+    <div
+      className="relative flex w-full flex-col overflow-hidden rounded-2xl ring-1 ring-white/12"
+      style={{ background: "linear-gradient(158deg, #1a2348 -12%, #0b1024 60%, #070b18 100%)", minHeight: "26rem" }}
+    >
+      <div className="flex h-full flex-col p-4 text-center">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-white/70">
+          {timedOut ? "Time up" : `${picked?.label} · ${lowerWins ? "lower wins" : "higher wins"}`}
+        </p>
+        <div className="mt-3 flex flex-1 items-center justify-center gap-2">
+          <DuelSide side={left} shown={round1(leftUp)} won={winner === "left"} dim={winner === "right"} timedOut={timedOut} />
+          <span className="font-display text-xs font-black tracking-[0.2em] text-[var(--ink-dim)]/60">VS</span>
+          <DuelSide side={right} shown={round1(rightUp)} won={winner === "right"} dim={winner === "left"} timedOut={timedOut} />
+        </div>
+        <div className="mt-2">
+          <span className="font-display inline-block rounded-md border-2 border-[var(--gold)] px-3 py-1 text-sm font-black uppercase tracking-widest text-gold shadow-[0_0_18px_rgba(245,197,24,0.4)]">
+            {timedOut ? "⏱ Time Up" : winner === "tie" ? "Tied" : "Captured!"}
+          </span>
+          <p className="mt-2 font-display text-sm font-bold uppercase tracking-wide text-white">
+            {winner === "tie" ? (
+              "No capture"
+            ) : (
+              <>
+                <span className="text-gold">{winner === "left" ? left.name : right.name}</span> takes the card
+              </>
+            )}
+          </p>
+          {!timedOut && vizag && (
+            <p className="text-gold mt-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">⚡ Vizag · +10%</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+  const lastDuel = useRef(duelView);
+  if (revealed) lastDuel.current = duelView;
+
   return (
     <div
       onClick={() => advanceCan && onAdvance()}
@@ -107,77 +193,16 @@ export function MobileMatch({
         </div>
       </div>
 
-      {/* card stage — single card flips between pick and duel */}
+      {/* card stage — one card that half-flips between pick and duel (no backface) */}
       <div className="flex flex-1 items-center justify-center px-4 py-3" style={{ perspective: "1500px" }}>
         <div
           className="relative w-full"
           style={{
-            transformStyle: "preserve-3d",
-            transition: "transform 650ms cubic-bezier(.4,.05,.2,1)",
-            transform: revealed ? "rotateY(180deg)" : "rotateY(0deg)",
+            transition: anim ? "transform 220ms cubic-bezier(.4,.05,.2,1)" : "none",
+            transform: `rotateY(${angle}deg)`,
           }}
         >
-          {/* FRONT — your card (tappable when it's your pick; otherwise face-up + waiting) */}
-          <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
-            {frontTappable ? (
-              <TappableCard card={frontCard} phase={phase} onPick={onPick} />
-            ) : (
-              <div className="relative">
-                <CardFace card={frontCard} />
-                {waitingText && (
-                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 rounded-b-2xl bg-black/65 py-2.5 backdrop-blur-[2px]">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-white/60" />
-                    <span className="font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-white/85">
-                      {waitingText}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* BACK — duel for the picked stat */}
-          <div
-            className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl ring-1 ring-white/12"
-            style={{
-              backfaceVisibility: "hidden",
-              WebkitBackfaceVisibility: "hidden",
-              transform: "rotateY(180deg)",
-              background: "linear-gradient(158deg, #1a2348 -12%, #0b1024 60%, #070b18 100%)",
-            }}
-          >
-            {revealed && (
-              <div className="flex h-full flex-col p-4 text-center">
-                <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-white/70">
-                  {timedOut ? "Time up" : `${picked?.label} · ${lowerWins ? "lower wins" : "higher wins"}`}
-                </p>
-
-                <div className="mt-3 flex flex-1 items-center justify-center gap-2">
-                  <DuelSide side={left} shown={round1(leftUp)} won={winner === "left"} dim={winner === "right"} timedOut={timedOut} />
-                  <span className="font-display text-xs font-black tracking-[0.2em] text-[var(--ink-dim)]/60">VS</span>
-                  <DuelSide side={right} shown={round1(rightUp)} won={winner === "right"} dim={winner === "left"} timedOut={timedOut} />
-                </div>
-
-                <div className="mt-2">
-                  <span className="font-display inline-block rounded-md border-2 border-[var(--gold)] px-3 py-1 text-sm font-black uppercase tracking-widest text-gold shadow-[0_0_18px_rgba(245,197,24,0.4)]">
-                    {timedOut ? "⏱ Time Up" : winner === "tie" ? "Tied" : "Captured!"}
-                  </span>
-                  <p className="mt-2 font-display text-sm font-bold uppercase tracking-wide text-white">
-                    {winner === "tie" ? (
-                      "No capture"
-                    ) : (
-                      <>
-                        <span className="text-gold">{winner === "left" ? left.name : right.name}</span> takes the card
-                      </>
-                    )}
-                  </p>
-                  {!timedOut && vizag && (
-                    <p className="text-gold mt-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">⚡ Vizag · +10%</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {face === "duel" ? lastDuel.current : pickView}
         </div>
       </div>
 
