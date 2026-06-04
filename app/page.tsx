@@ -125,7 +125,7 @@ export default function Home() {
   if (mode === "choose") {
     return (
       <main className="floodlight relative flex min-h-[100svh] w-full flex-1 flex-col items-center justify-center overflow-hidden px-6 text-center">
-        {/* A — big star cutouts flanking on laptop/large screens */}
+        {/* A — big star cutouts flanking on laptop/large screens (Kohli left, Vaibhav Suryavanshi right) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/players/v-kohli.png"
@@ -135,7 +135,7 @@ export default function Home() {
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/players/tm-head.png"
+          src="/players/v-sooryavanshi.png"
           alt=""
           aria-hidden
           className="pointer-events-none absolute bottom-0 right-0 hidden h-[78%] max-h-[680px] -scale-x-100 object-contain object-bottom opacity-90 drop-shadow-[0_30px_50px_rgba(0,0,0,0.6)] lg:block xl:right-4"
