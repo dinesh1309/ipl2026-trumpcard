@@ -137,11 +137,12 @@ export function MatchScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, deadline, revealed, botAttacking]);
 
-  // Computer's move: when it's the bot's turn to attack, it "thinks" briefly,
-  // then locks in its strongest stat for the phase.
+  // Computer's move: when it's the bot's turn to attack, it "thinks" for a few
+  // seconds (giving you time to read your own card) before locking in its
+  // strongest stat for the phase.
   useEffect(() => {
     if (!botAttacking || revealed) return;
-    const t = setTimeout(() => pickStat(pickBotStat(attackerCard, phase)), 1200);
+    const t = setTimeout(() => pickStat(pickBotStat(attackerCard, phase)), 5000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botAttacking, revealed, round]);
@@ -281,10 +282,15 @@ export function MatchScreen({
         )}
       </div>
 
-      {/* Cards: stacked on mobile, side-by-side on laptop */}
+      {/* Cards: stacked on mobile, side-by-side on laptop.
+          Vs Computer: pin you (P1) to the left/top and the computer (P2) to the
+          right/bottom every ball, so the layout never flips on the human. */}
       <div className="mt-3 flex flex-col md:flex-row md:items-start md:gap-5">
         {/* Attacker card — face-up with tappable stat rows */}
-        <div className="md:flex-1">
+        <div
+          className="md:flex-1"
+          style={vsComputer ? { order: attackerIsP1 ? 0 : 2 } : undefined}
+        >
           <CardLabel
             name={attackerName}
             tag={attackerIsP1 ? "P1" : "P2"}
@@ -316,14 +322,20 @@ export function MatchScreen({
         </div>
       </div>
 
-        <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
+        <div
+          className="my-2 flex items-center justify-center md:my-0 md:self-center"
+          style={vsComputer ? { order: 1 } : undefined}
+        >
           <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
             VS
           </span>
         </div>
 
         {/* Defender card — hidden until pick locks */}
-        <div className="md:flex-1">
+        <div
+          className="md:flex-1"
+          style={vsComputer ? { order: attackerIsP1 ? 2 : 0 } : undefined}
+        >
           <CardLabel
             name={defenderName}
             tag={attackerIsP1 ? "P2" : "P1"}
