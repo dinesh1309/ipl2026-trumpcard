@@ -9,7 +9,8 @@
 //
 // Screen state machine: name → lobby → match → result.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { track } from "@vercel/analytics";
 import { NameEntry } from "@/components/NameEntry";
 import { Lobby } from "@/components/Lobby";
 import { MatchScreen } from "@/components/MatchScreen";
@@ -53,6 +54,19 @@ export default function Home() {
   const [strikesP1, setStrikesP1] = useState(0);
   const [strikesP2, setStrikesP2] = useState(0);
   const [forfeitWinner, setForfeitWinner] = useState<1 | 2 | null>(null);
+
+  // Analytics: count a game played when a local / vs-Computer match begins, and a
+  // completion when it reaches the result screen. (Online is tracked in OnlineGame.)
+  useEffect(() => {
+    if (screen === "match" && mode !== "online") {
+      track("game_started", { mode });
+    }
+  }, [screen, mode]);
+  useEffect(() => {
+    if (screen === "result" && mode !== "online") {
+      track("game_finished", { mode });
+    }
+  }, [screen, mode]);
 
   function startMatch() {
     setHands(deal());

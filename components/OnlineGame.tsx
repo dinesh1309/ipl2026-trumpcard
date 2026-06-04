@@ -6,6 +6,7 @@
 // attacker locks a pick. P1 is authoritative (see lib/realtime reconcile()).
 
 import { useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
@@ -122,6 +123,22 @@ export function OnlineGame({
   useEffect(() => {
     if (matchId && match && clientId) reconcile(matchId, match, clientId);
   }, [matchId, match, clientId]);
+
+  // Analytics: one game_started per online match (when it goes active) and one
+  // game_finished when it ends. Fires per client, so online counts each player.
+  const startedMatch = useRef<string | null>(null);
+  const finishedMatch = useRef<string | null>(null);
+  useEffect(() => {
+    if (!matchId || !match) return;
+    if (match.status === "active" && startedMatch.current !== matchId) {
+      startedMatch.current = matchId;
+      track("game_started", { mode: "online" });
+    }
+    if (match.status === "finished" && finishedMatch.current !== matchId) {
+      finishedMatch.current = matchId;
+      track("game_finished", { mode: "online" });
+    }
+  }, [matchId, match?.status]);
 
   // Clean up on unmount.
   useEffect(() => {
