@@ -30,6 +30,7 @@ export function CardFace({
   revealed = true,
   size = "full",
   fill = false,
+  hideAvatarLg = false,
 }: {
   card: Card;
   highlightStatKey?: string;
@@ -37,6 +38,7 @@ export function CardFace({
   revealed?: boolean;
   size?: "full" | "mini";
   fill?: boolean; // stretch to the parent's height instead of using a fixed aspect
+  hideAvatarLg?: boolean; // hide the header thumbnail on lg+ (big photo shows instead)
 }) {
   const accent = card.accent;
   const chipDark = !isLight(accent);
@@ -125,7 +127,7 @@ export function CardFace({
 
       {/* Header: headshot + name + role */}
       <div className="relative flex items-center gap-3 px-4 pt-4">
-        <PlayerAvatar card={card} />
+        <PlayerAvatar card={card} className={hideAvatarLg ? "h-14 w-14 lg:hidden" : "h-14 w-14"} />
         <div className="min-w-0">
           <h3 className="font-display truncate text-xl font-bold leading-tight text-white">
             {card.name}

@@ -15,10 +15,12 @@ export function TappableCard({
   card,
   phase,
   onPick,
+  hideAvatarLg = false,
 }: {
   card: Card;
   phase: Phase;
   onPick: (stat: StatDef) => void;
+  hideAvatarLg?: boolean; // hide the header thumbnail on lg+ (big photo shows instead)
 }) {
   const accent = card.accent;
   const battingStats = STATS.filter((s) => s.group === "batting");
@@ -46,7 +48,7 @@ export function TappableCard({
       )}
 
       <div className="relative flex items-center gap-3 px-4 pt-4">
-        <PlayerAvatar card={card} />
+        <PlayerAvatar card={card} className={hideAvatarLg ? "h-14 w-14 lg:hidden" : "h-14 w-14"} />
         <div className="min-w-0">
           <h3 className="font-display truncate text-xl font-bold leading-tight text-white">
             {card.name}

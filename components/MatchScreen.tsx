@@ -10,7 +10,7 @@ import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
-import { BallStamp, VizagStrike } from "@/components/MatchFx";
+import { BallStamp, VizagStrike, CapturedPile, useCountUp } from "@/components/MatchFx";
 import type { Card } from "@/lib/cards";
 import {
   STATS,
@@ -36,6 +36,8 @@ const PHASE_META: Record<
 function fmt(v: number): string {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
+
+const AUTO_MS = 10000; // long fallback — tapping is the primary way to advance
 
 export function MatchScreen({
   p1Name,
@@ -147,6 +149,14 @@ export function MatchScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botAttacking, revealed, round]);
 
+  // Auto-advance once the ball has resolved (no Next button). Tap anywhere skips.
+  useEffect(() => {
+    if (!revealed) return;
+    const t = setTimeout(onNext, AUTO_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealed, round]);
+
   function pickStat(stat: StatDef) {
     if (pickedKey || timedOut) return;
     setPickedKey(stat.key);
@@ -179,6 +189,11 @@ export function MatchScreen({
     ? effectiveValue(defenderCard, pickedStat, phase)
     : undefined;
 
+  // Count the winning-stat numbers up on reveal (skip on a timeout — no numbers).
+  const countRun = !!outcome && !timedOut;
+  const atkUp = useCountUp(outcome?.attackerValue ?? 0, countRun);
+  const defUp = useCountUp(outcome?.defenderValue ?? 0, countRun);
+
   // A card is "face-up" (safe to also show the player's big photo) when: the
   // attacker card is up except while the bot is thinking; the defender card is
   // up only after the reveal (or when the human is defending the bot).
@@ -204,18 +219,36 @@ export function MatchScreen({
         className={`relative mt-1.5 transition duration-300 lg:min-h-0 lg:flex-1 ${
           outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
         }`}
+        style={{ perspective: "1000px" }}
       >
-        {revealed ? (
-          <CardFace
-            card={attackerCard}
-            highlightStatKey={pickedKey ?? undefined}
-            shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
-          />
-        ) : botAttacking ? (
-          // Keep the computer's hand hidden while it decides.
-          <CardFace card={attackerCard} revealed={false} fill />
+        {botAttacking ? (
+          // Computer is the attacker: hidden while it thinks, flips over on reveal.
+          revealed ? (
+            <div key={`atk-rev-${round}`} className="animate-flip h-full">
+              <CardFace
+                card={attackerCard}
+                highlightStatKey={pickedKey ?? undefined}
+                shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
+                hideAvatarLg
+              />
+            </div>
+          ) : (
+            <CardFace card={attackerCard} revealed={false} fill />
+          )
         ) : (
-          <TappableCard card={attackerCard} phase={phase} onPick={pickStat} />
+          // You're the attacker: your card is dealt face-up — flip it in at the start.
+          <div key={`atk-deal-${round}`} className="animate-flip h-full">
+            {revealed ? (
+              <CardFace
+                card={attackerCard}
+                highlightStatKey={pickedKey ?? undefined}
+                shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
+                hideAvatarLg
+              />
+            ) : (
+              <TappableCard card={attackerCard} phase={phase} onPick={pickStat} hideAvatarLg />
+            )}
+          </div>
         )}
         {revealed && attackerCard.vizag && <VizagStrike key={`atk-${round}`} />}
       </div>
@@ -234,18 +267,36 @@ export function MatchScreen({
         className={`relative mt-1.5 transition duration-300 lg:min-h-0 lg:flex-1 ${
           outcome?.winner === "attacker" ? "opacity-55 saturate-50" : ""
         }`}
+        style={{ perspective: "1000px" }}
       >
-        {revealed ? (
-          <CardFace
-            card={defenderCard}
-            highlightStatKey={pickedKey ?? undefined}
-            shownValue={defenderEff !== undefined ? round1(defenderEff) : undefined}
-          />
-        ) : botAttacking ? (
-          // You're defending the computer — your own card stays in view.
-          <CardFace card={defenderCard} />
+        {botAttacking ? (
+          // You're defending the computer: your card is dealt face-up — flip in at start.
+          <div key={`def-deal-${round}`} className="animate-flip h-full">
+            {revealed ? (
+              <CardFace
+                card={defenderCard}
+                highlightStatKey={pickedKey ?? undefined}
+                shownValue={defenderEff !== undefined ? round1(defenderEff) : undefined}
+                hideAvatarLg
+              />
+            ) : (
+              <CardFace card={defenderCard} hideAvatarLg />
+            )}
+          </div>
         ) : (
-          <CardFace card={defenderCard} revealed={false} fill />
+          // Defender is hidden until the pick, then flips over on reveal.
+          revealed ? (
+            <div key={`def-rev-${round}`} className="animate-flip h-full">
+              <CardFace
+                card={defenderCard}
+                highlightStatKey={pickedKey ?? undefined}
+                shownValue={defenderEff !== undefined ? round1(defenderEff) : undefined}
+                hideAvatarLg
+              />
+            </div>
+          ) : (
+            <CardFace card={defenderCard} revealed={false} fill />
+          )
         )}
         {revealed && defenderCard.vizag && <VizagStrike key={`def-${round}`} />}
       </div>
@@ -264,8 +315,23 @@ export function MatchScreen({
   const rightShow = leftIsAttacker ? defenderCardVisible : attackerCardVisible;
 
   return (
-    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl lg:h-[100svh] lg:min-h-0 lg:overflow-hidden lg:pb-3">
+    // Full-width clipper: stops vertical scroll on laptop/large screens without
+    // clipping the big side photos horizontally (the section stays max-w-4xl, so
+    // the header + outcome stay centered; only this wrapper does the clipping).
+    <div className="flex w-full flex-1 flex-col lg:h-[100svh] lg:overflow-hidden">
+    <section
+      onClick={() => revealed && onNext()}
+      className={`relative mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl lg:min-h-0 lg:pb-3 ${revealed ? "cursor-pointer" : ""}`}
+    >
       <PhaseIntro round={round} />
+      {/* auto-advance countdown line */}
+      {revealed && (
+        <span
+          key={`cd-${round}`}
+          className="absolute left-0 top-0 z-10 h-1 rounded-r-full"
+          style={{ background: "linear-gradient(90deg,var(--gold-soft),var(--gold))", animation: `countdown-line ${AUTO_MS}ms linear forwards` }}
+        />
+      )}
       {/* Phase banner */}
       <div
         className="relative overflow-hidden rounded-2xl border px-4 py-3 lg:py-2"
@@ -302,22 +368,10 @@ export function MatchScreen({
         <OverTicker results={results} current={round} />
       </div>
 
-      {/* Capture scoreboard */}
-      <div className="mt-3 grid grid-cols-2 gap-3 lg:mt-2">
-        <ScoreChip
-          name={p1Name}
-          score={scoreP1}
-          strikes={strikesP1}
-          active={attackerIsP1}
-          tag="P1"
-        />
-        <ScoreChip
-          name={p2Name}
-          score={scoreP2}
-          strikes={strikesP2}
-          active={!attackerIsP1}
-          tag="P2"
-        />
+      {/* Captured piles = the score (grows as cards are won) */}
+      <div className="mt-3 flex items-start justify-between gap-3 lg:mt-2">
+        <CapturedPile count={scoreP1} side="you" name={p1Name} strikes={strikesP1} align="left" />
+        <CapturedPile count={scoreP2} side="opp" name={p2Name} strikes={strikesP2} align="right" />
       </div>
 
       {/* Turn indicator + countdown */}
@@ -369,14 +423,26 @@ export function MatchScreen({
       {/* Cards: stacked on mobile, side-by-side on tablet. On laptop/large
           screens the row goes full-bleed and a big standing player photo flanks
           each card (you on the left, computer on the right). */}
-      <div className="mt-3 lg:mx-[calc(50%-50vw)] lg:mt-2 lg:w-screen lg:overflow-hidden">
+      <div className="mt-3 lg:mx-[calc(50%-50vw)] lg:mt-2 lg:w-screen">
         <div className="mx-auto flex max-w-md flex-col md:max-w-4xl md:flex-row md:items-start md:gap-5 lg:max-w-none lg:items-stretch lg:justify-center lg:gap-0 lg:px-4">
           <BigPlayer card={leftCardData} show={leftShow} side="left" />
           {leftBlock}
           <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
-            <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
-              VS
-            </span>
+            {revealed ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNext();
+                }}
+                className="animate-pulse whitespace-nowrap rounded-full border border-[var(--gold)]/50 bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[#161003] shadow-[0_10px_24px_-8px_rgba(245,197,24,0.7)]"
+              >
+                {round + 1 >= TOTAL_ROUNDS ? "Tap → Result" : "Tap → Next"}
+              </button>
+            ) : (
+              <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
+                VS
+              </span>
+            )}
           </div>
           {rightBlock}
           <BigPlayer card={rightCardData} show={rightShow} side="right" />
@@ -410,15 +476,22 @@ export function MatchScreen({
                 {attackerName} earns a strike · 2 strikes = forfeit
               </p>
             ) : (
-              <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
-                {pickedStat?.label}:{" "}
-                <span className="font-mono text-white/90">
-                  {outcome.attackerMissing ? "—" : fmt(outcome.attackerValue)}
-                </span>{" "}
-                <span className="text-[var(--ink-dim)]/60">(atk)</span> vs{" "}
-                <span className="font-mono text-white/90">
-                  {outcome.defenderMissing ? "—" : fmt(outcome.defenderValue)}
-                </span>{" "}
+              <p className="mt-1 flex items-center justify-center gap-1.5 text-[12px] text-[var(--ink-dim)]">
+                <span>{pickedStat?.label}:</span>
+                <span
+                  className={`font-mono tabular-nums ${outcome.winner === "attacker" ? "text-gold text-base font-bold" : "text-white/90"}`}
+                  style={outcome.winner === "attacker" ? { textShadow: "0 0 12px rgba(245,197,24,.6)" } : undefined}
+                >
+                  {outcome.attackerMissing ? "—" : fmt(round1(atkUp))}
+                </span>
+                <span className="text-[var(--ink-dim)]/60">(atk)</span>
+                <span>vs</span>
+                <span
+                  className={`font-mono tabular-nums ${outcome.winner === "defender" ? "text-gold text-base font-bold" : "text-white/90"}`}
+                  style={outcome.winner === "defender" ? { textShadow: "0 0 12px rgba(245,197,24,.6)" } : undefined}
+                >
+                  {outcome.defenderMissing ? "—" : fmt(round1(defUp))}
+                </span>
                 <span className="text-[var(--ink-dim)]/60">(def)</span>
               </p>
             )}
@@ -433,16 +506,10 @@ export function MatchScreen({
               </p>
             )}
           </div>
-
-          <button
-            onClick={onNext}
-            className="font-display mt-3 w-full rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)] transition active:scale-[0.98] lg:mt-2 lg:py-3"
-          >
-            {round + 1 >= TOTAL_ROUNDS ? "See Result" : "Next Ball"}
-          </button>
         </div>
       )}
     </section>
+    </div>
   );
 }
 
@@ -465,11 +532,14 @@ function BigPlayer({
   show: boolean;
   side: "left" | "right";
 }) {
+  // self-stretch → the box is exactly the card's height; object-contain + max-h-full
+  // means the full cutout always fits inside (never cropped, never spills past the
+  // card bottom into the outcome banner). object-bottom stands the player on the floor.
   return (
     <div
       aria-hidden
-      className={`hidden self-end lg:block lg:w-[190px] lg:shrink-0 xl:w-[260px] 2xl:w-[320px] ${
-        side === "left" ? "lg:-mr-8 xl:-mr-10" : "lg:-ml-8 xl:-ml-10"
+      className={`hidden self-stretch lg:flex lg:items-end lg:shrink-0 lg:w-[220px] xl:w-[300px] 2xl:w-[360px] ${
+        side === "left" ? "lg:-mr-6 xl:-mr-8" : "lg:-ml-6 xl:-ml-8"
       }`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -480,68 +550,10 @@ function BigPlayer({
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
         }}
-        className={`w-full drop-shadow-[0_30px_45px_rgba(0,0,0,0.6)] transition-opacity duration-500 ${
+        className={`max-h-full w-full object-contain object-bottom drop-shadow-[0_30px_45px_rgba(0,0,0,0.6)] transition-opacity duration-500 ${
           show ? "opacity-100" : "opacity-0"
         } ${side === "right" ? "-scale-x-100" : ""}`}
       />
-    </div>
-  );
-}
-
-function ScoreChip({
-  name,
-  score,
-  strikes,
-  active,
-  tag,
-}: {
-  name: string;
-  score: number;
-  strikes: number;
-  active: boolean;
-  tag: string;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between rounded-xl border px-3 py-2.5 transition ${
-        active
-          ? "border-[var(--gold)]/45 bg-[var(--gold)]/10"
-          : "border-[var(--hair)] bg-black/30"
-      }`}
-    >
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
-            {tag}
-          </span>
-          {active && (
-            <span className="text-gold text-[8px] font-bold uppercase tracking-wider">
-              ● Attacking
-            </span>
-          )}
-          <span className="flex items-center gap-0.5" title={`${strikes} / 2 timeout strikes`}>
-            {[0, 1].map((i) => (
-              <span
-                key={i}
-                className="h-1.5 w-1.5 rounded-full"
-                style={{
-                  background: i < strikes ? "#ff6a6a" : "rgba(255,255,255,0.18)",
-                  boxShadow: i < strikes ? "0 0 6px rgba(255,106,106,0.7)" : "none",
-                }}
-              />
-            ))}
-          </span>
-        </div>
-        <span className="font-display block truncate text-sm font-semibold text-white">
-          {name}
-        </span>
-      </div>
-      <span
-        key={score}
-        className="animate-score-pop font-display ml-2 text-2xl font-bold tabular-nums text-white"
-      >
-        {score}
-      </span>
     </div>
   );
 }
