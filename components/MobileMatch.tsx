@@ -234,11 +234,21 @@ function DuelSide({
   timedOut: boolean;
 }) {
   return (
-    <div className={`flex flex-1 flex-col items-center gap-2 ${dim ? "opacity-50" : ""}`}>
-      <PlayerAvatar card={side.card} className={`h-20 w-20 ${won ? "ring-2 ring-[var(--gold)]" : "ring-1 ring-white/15"}`} />
-      <span className="font-display max-w-full truncate text-[11px] font-semibold text-white/80">{side.name}</span>
+    <div className={`flex w-0 flex-1 flex-col items-center gap-1.5 px-1 ${dim ? "opacity-50" : ""}`}>
+      <PlayerAvatar
+        card={side.card}
+        className={`h-[104px] w-[104px] ${won ? "ring-2 ring-[var(--gold)]" : "ring-1 ring-white/15"}`}
+      />
+      {/* cricketer name — prominent, so the player is recognisable even if the face is small */}
+      <span className="font-display w-full truncate text-sm font-bold leading-tight text-white">
+        {side.card.name}
+      </span>
+      {/* who's side + team */}
+      <span className="w-full truncate text-[10px] uppercase tracking-wider text-[var(--ink-dim)]">
+        {side.name} · {side.card.team}
+      </span>
       <span
-        className={`font-mono text-3xl font-bold tabular-nums ${won ? "text-gold" : "text-white/80"}`}
+        className={`font-mono text-2xl font-bold tabular-nums ${won ? "text-gold" : "text-white/80"}`}
         style={won ? { textShadow: "0 0 16px rgba(245,197,24,.6)" } : undefined}
       >
         {timedOut || side.missing ? "—" : fmt(shown)}
