@@ -22,10 +22,27 @@ const mono = JetBrains_Mono({
   weight: ["500", "600", "700"],
 });
 
+const SITE_URL = "https://ipl2026-trumpcard.vercel.app";
+const TITLE = "IPL 2026 Trump Cards — Vizag Edition";
+const DESCRIPTION =
+  "A premium IPL 2026 cricket trading-card battle game. Pick your stat, capture the card, win under the floodlights.";
+
 export const metadata: Metadata = {
-  title: "IPL 2026 Trump Cards — Vizag Edition",
-  description:
-    "A premium IPL 2026 cricket trading-card battle game. Pick your stat, win the round under the floodlights.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "IPL 2026 Trump Cards",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
