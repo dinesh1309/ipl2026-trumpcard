@@ -435,6 +435,14 @@ function OnlineMatch({
   const canAdvance = !!outcome && !iPressedNext;
   const advanceLabel = match.round + 1 >= TOTAL_ROUNDS ? "Tap → Result" : "Tap → Next";
 
+  // Capture motion: the losing card slides toward the winner and shrinks.
+  // You're on the left, opponent on the right.
+  const captureTransition = "transform 600ms cubic-bezier(.5,0,.2,1) 650ms";
+  const myLost = !!outcome && !iWonBall && outcome.winner !== "tie";
+  const oppLost = !!outcome && iWonBall;
+  const myCaptureStyle = myLost ? { transform: "translateX(46px) scale(0.8)" } : undefined;
+  const oppCaptureStyle = oppLost ? { transform: "translateX(-46px) scale(0.8)" } : undefined;
+
   return (
     <section
       onClick={() => canAdvance && setNext(matchId, isP1)}
@@ -559,10 +567,10 @@ function OnlineMatch({
           You · {myName}
         </p>
         <div
-          className={`relative mt-1.5 transition duration-300 ${
+          className={`relative mt-1.5 ${
             outcome && !iWonBall && outcome.winner !== "tie" ? "opacity-55 saturate-50" : ""
           }`}
-          style={{ perspective: "1000px" }}
+          style={{ perspective: "1000px", transition: captureTransition, ...myCaptureStyle }}
         >
           {/* Your card is always face-up to you — deal it in at the start. */}
           <div key={`me-deal-${match.round}`} className="animate-flip">
@@ -616,10 +624,10 @@ function OnlineMatch({
           {oppName}
         </p>
         <div
-          className={`relative mt-1.5 transition duration-300 ${
+          className={`relative mt-1.5 ${
             outcome && iWonBall ? "opacity-55 saturate-50" : ""
           }`}
-          style={{ perspective: "1000px" }}
+          style={{ perspective: "1000px", transition: captureTransition, ...oppCaptureStyle }}
         >
           {outcome ? (
             // Opponent's hidden card flips over on the reveal.

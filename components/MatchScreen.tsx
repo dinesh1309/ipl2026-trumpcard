@@ -205,6 +205,19 @@ export function MatchScreen({
   // fits one viewport once the outcome banner appears.
   const cardWidthCls = "lg:max-w-[235px] xl:max-w-[265px] 2xl:max-w-[300px]";
 
+  // Capture motion: after the reveal the losing card slides toward the winner
+  // and shrinks (it gets "taken"). leftIsAttacker fixes which side each card is.
+  const leftIsAttacker = vsComputer ? attackerIsP1 : true;
+  const attackerLost = !!outcome && outcome.winner === "defender";
+  const defenderLost = !!outcome && outcome.winner === "attacker";
+  const captureTransition = "transform 600ms cubic-bezier(.5,0,.2,1) 650ms";
+  const attackerCaptureStyle = attackerLost
+    ? { transform: `translateX(${leftIsAttacker ? 46 : -46}px) scale(0.8)` }
+    : undefined;
+  const defenderCaptureStyle = defenderLost
+    ? { transform: `translateX(${leftIsAttacker ? -46 : 46}px) scale(0.8)` }
+    : undefined;
+
   const attackerBlock = (
     <div className={`w-full md:flex-1 lg:flex lg:flex-none lg:shrink-0 lg:flex-col ${cardWidthCls}`}>
       <CardLabel
@@ -214,10 +227,10 @@ export function MatchScreen({
         win={outcome?.winner === "attacker"}
       />
       <div
-        className={`relative mt-1.5 transition duration-300 lg:min-h-0 lg:flex-1 ${
+        className={`relative mt-1.5 lg:min-h-0 lg:flex-1 ${
           outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
         }`}
-        style={{ perspective: "1000px" }}
+        style={{ perspective: "1000px", transition: captureTransition, ...attackerCaptureStyle }}
       >
         {botAttacking ? (
           // Computer is the attacker: hidden while it thinks, flips over on reveal.
@@ -262,10 +275,10 @@ export function MatchScreen({
         win={outcome?.winner === "defender"}
       />
       <div
-        className={`relative mt-1.5 transition duration-300 lg:min-h-0 lg:flex-1 ${
+        className={`relative mt-1.5 lg:min-h-0 lg:flex-1 ${
           outcome?.winner === "attacker" ? "opacity-55 saturate-50" : ""
         }`}
-        style={{ perspective: "1000px" }}
+        style={{ perspective: "1000px", transition: captureTransition, ...defenderCaptureStyle }}
       >
         {botAttacking ? (
           // You're defending the computer: your card is dealt face-up — flip in at start.
@@ -304,7 +317,6 @@ export function MatchScreen({
   // Fixed screen sides: vs Computer pins you (P1) left and the computer right;
   // otherwise the attacker sits on the left. Each side gets a big standing photo
   // (laptop/large screens only) that fades in once that card is face-up.
-  const leftIsAttacker = vsComputer ? attackerIsP1 : true;
   const leftBlock = leftIsAttacker ? attackerBlock : defenderBlock;
   const rightBlock = leftIsAttacker ? defenderBlock : attackerBlock;
   const leftCardData = leftIsAttacker ? attackerCard : defenderCard;
