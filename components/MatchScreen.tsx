@@ -10,7 +10,7 @@ import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
-import { BallStamp, VizagStrike, CapturedPile, useCountUp } from "@/components/MatchFx";
+import { BallStamp, VizagStrike, CapturedPile, useCountUp, BigPlayer } from "@/components/MatchFx";
 import { MobileMatch } from "@/components/MobileMatch";
 import type { Card } from "@/lib/cards";
 import {
@@ -577,41 +577,6 @@ function round1(n: number): number {
  * don't shift when the opponent's photo fades in on reveal; `show` toggles the
  * fade. The right-side photo is mirrored so the player faces inward.
  */
-function BigPlayer({
-  card,
-  show,
-  side,
-}: {
-  card: Card;
-  show: boolean;
-  side: "left" | "right";
-}) {
-  // self-stretch → the box is exactly the card's height; object-contain + max-h-full
-  // means the full cutout always fits inside (never cropped, never spills past the
-  // card bottom into the outcome banner). object-bottom stands the player on the floor.
-  return (
-    <div
-      aria-hidden
-      className={`hidden self-stretch lg:flex lg:items-end lg:shrink-0 lg:w-[220px] xl:w-[300px] 2xl:w-[360px] ${
-        side === "left" ? "lg:-mr-6 xl:-mr-8" : "lg:-ml-6 xl:-ml-8"
-      }`}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`/players/${card.id}.png`}
-        alt=""
-        draggable={false}
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-        }}
-        className={`max-h-full w-full object-contain object-bottom drop-shadow-[0_30px_45px_rgba(0,0,0,0.6)] transition-opacity duration-500 ${
-          show ? "opacity-100" : "opacity-0"
-        } ${side === "right" ? "-scale-x-100" : ""}`}
-      />
-    </div>
-  );
-}
-
 function CardLabel({
   name,
   tag,

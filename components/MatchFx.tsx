@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import type { Card } from "@/lib/cards";
 
 // Shared match visual effects: ball-result stamp, Vizag sweep, capture pile,
 // count-up, confetti — used across pass-and-play, vs-Computer, and online.
@@ -81,6 +82,45 @@ export function CapturedPile({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Big standing player photo beside its card on laptop/large screens (lg+),
+ * hidden on phones/tablets. self-stretch → the box is exactly the card's height;
+ * object-contain + max-h-full means the full cutout always fits (never cropped,
+ * never spills past the card). object-bottom stands the player on the floor.
+ * `show` fades it in (e.g. only once the opponent's card is revealed).
+ */
+export function BigPlayer({
+  card,
+  show,
+  side,
+}: {
+  card: Card;
+  show: boolean;
+  side: "left" | "right";
+}) {
+  return (
+    <div
+      aria-hidden
+      className={`hidden self-stretch lg:flex lg:items-end lg:shrink-0 lg:w-[220px] xl:w-[300px] 2xl:w-[360px] ${
+        side === "left" ? "lg:-mr-6 xl:-mr-8" : "lg:-ml-6 xl:-ml-8"
+      }`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/players/${card.id}.png`}
+        alt=""
+        draggable={false}
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+        }}
+        className={`max-h-full w-full object-contain object-bottom drop-shadow-[0_30px_45px_rgba(0,0,0,0.6)] transition-opacity duration-500 ${
+          show ? "opacity-100" : "opacity-0"
+        } ${side === "right" ? "-scale-x-100" : ""}`}
+      />
     </div>
   );
 }

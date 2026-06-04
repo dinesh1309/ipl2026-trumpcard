@@ -10,7 +10,7 @@ import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
-import { BallStamp, VizagStrike, WinSparks, CapturedPile, useCountUp, Confetti } from "@/components/MatchFx";
+import { BallStamp, VizagStrike, WinSparks, CapturedPile, useCountUp, Confetti, BigPlayer } from "@/components/MatchFx";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { MobileMatch } from "@/components/MobileMatch";
 import { HowToPlay } from "@/components/Lobby";
@@ -453,6 +453,9 @@ function OnlineMatch({
         ? "left"
         : "right";
 
+  // Same card sizing as MatchScreen so the desktop layout looks identical.
+  const cardWidthCls = "lg:max-w-[235px] xl:max-w-[265px] 2xl:max-w-[300px]";
+
   return (
     <>
       <PhaseIntro round={match.round} />
@@ -481,10 +484,12 @@ function OnlineMatch({
         advanceWaiting={iPressedNext}
       />
 
-      {/* Tablet / laptop (md+): two cards side by side. */}
+      {/* Tablet / laptop (md+): two cards side by side, with the no-scroll fit
+          clipper so the standing photos aren't clipped on wide screens. */}
+      <div className="flex w-full flex-1 flex-col lg:h-[100svh] lg:overflow-hidden">
       <section
         onClick={() => canAdvance && setNext(matchId, isP1)}
-        className={`relative mx-auto hidden min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:flex md:max-w-4xl ${canAdvance ? "cursor-pointer" : ""}`}
+        className={`relative mx-auto hidden min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:flex md:max-w-4xl lg:min-h-0 lg:pb-3 ${canAdvance ? "cursor-pointer" : ""}`}
       >
       {/* shared auto-advance countdown line */}
       {outcome && (
@@ -596,87 +601,90 @@ function OnlineMatch({
         </div>
       )}
 
-      {/* Cards: stacked on mobile, side-by-side on laptop */}
-      <div className="mt-3 flex flex-col md:flex-row md:items-start md:gap-5">
-      {/* My card */}
-      <div className="md:flex-1">
-        <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
-          You · {myName}
-        </p>
-        <div
-          className={`relative mt-1.5 ${
-            outcome && !iWonBall && outcome.winner !== "tie" ? "opacity-55 saturate-50" : ""
-          }`}
-          style={{ perspective: "1000px", transition: captureTransition, ...myCaptureStyle }}
-        >
-          {/* Your card is always face-up to you — deal it in at the start. */}
-          <div key={`me-deal-${match.round}`} className="animate-flip">
-            {amAttacker && !outcome ? (
-              <TappableCard
-                card={myCard}
-                phase={phase}
-                onPick={(s) => submitPick(matchId, match.round, s.key, clientId)}
-              />
+      {/* Cards (md+): two cards with standing photos flanking on lg+. Full-bleed
+          so the photos use the side space without clipping (same as the other modes). */}
+      <div className="mt-3 lg:mx-[calc(50%-50vw)] lg:mt-2 lg:w-screen">
+        <div className="mx-auto flex max-w-md flex-col md:max-w-4xl md:flex-row md:items-start md:gap-5 lg:max-w-none lg:items-stretch lg:justify-center lg:gap-0 lg:px-4">
+          {/* you — standing photo (left, always visible) */}
+          <BigPlayer card={myCard} show side="left" />
+
+          {/* My card */}
+          <div className={`w-full md:flex-1 lg:flex lg:flex-none lg:shrink-0 lg:flex-col ${cardWidthCls}`}>
+            <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
+              You · {myName}
+            </p>
+            <div
+              className={`relative mt-1.5 lg:min-h-0 lg:flex-1 ${
+                outcome && !iWonBall && outcome.winner !== "tie" ? "opacity-55 saturate-50" : ""
+              }`}
+              style={{ perspective: "1000px", transition: captureTransition, ...myCaptureStyle }}
+            >
+              <div key={`me-deal-${match.round}`} className="animate-flip h-full">
+                {amAttacker && !outcome ? (
+                  <TappableCard
+                    card={myCard}
+                    phase={phase}
+                    onPick={(s) => submitPick(matchId, match.round, s.key, clientId)}
+                    hideAvatarLg
+                  />
+                ) : (
+                  <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} hideAvatarLg />
+                )}
+              </div>
+              {outcome && myCard.vizag && <VizagStrike key={`me-${match.round}`} />}
+            </div>
+          </div>
+
+          {/* VS / advance CTA between the cards */}
+          <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
+            {outcome ? (
+              iPressedNext ? (
+                <span className="whitespace-nowrap rounded-full border border-[var(--hair)] bg-black/40 px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ink-dim)]">
+                  Waiting…
+                </span>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNext(matchId, isP1);
+                  }}
+                  className="animate-pulse whitespace-nowrap rounded-full border border-[var(--gold)]/50 bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[#161003] shadow-[0_10px_24px_-8px_rgba(245,197,24,0.7)]"
+                >
+                  {advanceLabel}
+                </button>
+              )
             ) : (
-              <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} />
+              <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
+                VS
+              </span>
             )}
           </div>
-          {outcome && myCard.vizag && <VizagStrike key={`me-${match.round}`} />}
-        </div>
 
-        {!amAttacker && !outcome && (
-          <p className="mt-2 text-center text-xs text-[var(--ink-dim)]">
-            Opponent is choosing a stat…
-          </p>
-        )}
-      </div>
-
-      <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
-        {outcome ? (
-          iPressedNext ? (
-            <span className="whitespace-nowrap rounded-full border border-[var(--hair)] bg-black/40 px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ink-dim)]">
-              Waiting…
-            </span>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setNext(matchId, isP1);
-              }}
-              className="animate-pulse whitespace-nowrap rounded-full border border-[var(--gold)]/50 bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[#161003] shadow-[0_10px_24px_-8px_rgba(245,197,24,0.7)]"
+          {/* Opponent card — hidden until reveal */}
+          <div className={`w-full md:flex-1 lg:flex lg:flex-none lg:shrink-0 lg:flex-col ${cardWidthCls}`}>
+            <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
+              {oppName}
+            </p>
+            <div
+              className={`relative mt-1.5 lg:min-h-0 lg:flex-1 ${
+                outcome && iWonBall ? "opacity-55 saturate-50" : ""
+              }`}
+              style={{ perspective: "1000px", transition: captureTransition, ...oppCaptureStyle }}
             >
-              {advanceLabel}
-            </button>
-          )
-        ) : (
-          <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
-            VS
-          </span>
-        )}
-      </div>
-
-      {/* Opponent card — hidden until reveal */}
-      <div className="md:flex-1">
-        <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--ink-dim)]">
-          {oppName}
-        </p>
-        <div
-          className={`relative mt-1.5 ${
-            outcome && iWonBall ? "opacity-55 saturate-50" : ""
-          }`}
-          style={{ perspective: "1000px", transition: captureTransition, ...oppCaptureStyle }}
-        >
-          {outcome ? (
-            // Opponent's hidden card flips over on the reveal.
-            <div key={`opp-rev-${match.round}`} className="animate-flip">
-              <CardFace card={oppCard} highlightStatKey={pickedKey} shownValue={oppEff} />
+              {outcome ? (
+                <div key={`opp-rev-${match.round}`} className="animate-flip h-full">
+                  <CardFace card={oppCard} highlightStatKey={pickedKey} shownValue={oppEff} hideAvatarLg />
+                </div>
+              ) : (
+                <CardFace card={oppCard} revealed={false} fill />
+              )}
+              {outcome && oppCard.vizag && <VizagStrike key={`opp-${match.round}`} />}
             </div>
-          ) : (
-            <CardFace card={oppCard} revealed={false} />
-          )}
-          {outcome && oppCard.vizag && <VizagStrike key={`opp-${match.round}`} />}
+          </div>
+
+          {/* opponent — standing photo (right, fades in on reveal) */}
+          <BigPlayer card={oppCard} show={!!outcome} side="right" />
         </div>
-      </div>
       </div>
 
       {/* Outcome + Next */}
@@ -746,6 +754,7 @@ function OnlineMatch({
         </div>
       )}
       </section>
+      </div>
     </>
   );
 }
