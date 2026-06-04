@@ -19,7 +19,7 @@ import { isFirebaseConfigured } from "@/lib/firebase";
 import type { Card } from "@/lib/cards";
 import { selectMatchDeck, TOTAL_ROUNDS } from "@/lib/engine";
 
-type Mode = "choose" | "online" | "local";
+type Mode = "choose" | "online" | "local" | "bot";
 
 type Screen = "name" | "lobby" | "match" | "result";
 
@@ -34,8 +34,9 @@ function deal(): Deal {
 }
 
 export default function Home() {
-  // Online mode only appears when Firebase is configured; otherwise straight to pass-and-play.
-  const [mode, setMode] = useState<Mode>(isFirebaseConfigured ? "choose" : "local");
+  // Always land on the mode picker — Pass & Play and vs Computer work offline;
+  // Play Online only shows when Firebase is configured.
+  const [mode, setMode] = useState<Mode>("choose");
   const [screen, setScreen] = useState<Screen>("name");
   const [p1, setP1] = useState("");
   const [p2, setP2] = useState("");
@@ -62,6 +63,14 @@ export default function Home() {
   }
 
   function rematch() {
+    startMatch();
+  }
+
+  // Single-player kickoff: set up the human vs the computer and deal straight in.
+  function startBot(name: string) {
+    setP1(name.trim() || "You");
+    setP2("Computer");
+    setMode("bot");
     startMatch();
   }
 
@@ -124,14 +133,32 @@ export default function Home() {
           </p>
         </div>
         <div className="flex w-full max-w-xs flex-col gap-3">
+          {isFirebaseConfigured && (
+            <button
+              onClick={() => setMode("online")}
+              className="font-display rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
+            >
+              Play Online
+            </button>
+          )}
           <button
-            onClick={() => setMode("online")}
-            className="font-display rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
+            onClick={() => {
+              setMode("bot");
+              setScreen("name");
+            }}
+            className={`font-display rounded-2xl py-4 text-base font-bold uppercase tracking-widest ${
+              isFirebaseConfigured
+                ? "border border-[var(--hair)] bg-black/30 text-white"
+                : "bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
+            }`}
           >
-            Play Online
+            Play vs Computer
           </button>
           <button
-            onClick={() => setMode("local")}
+            onClick={() => {
+              setMode("local");
+              setScreen("name");
+            }}
             className="font-display rounded-2xl border border-[var(--hair)] bg-black/30 py-4 text-base font-bold uppercase tracking-widest text-white"
           >
             Pass &amp; Play
@@ -144,7 +171,10 @@ export default function Home() {
   if (mode === "online") {
     return (
       <main className="floodlight flex w-full flex-1 flex-col">
-        <OnlineGame onExit={() => setMode("choose")} />
+        <OnlineGame
+          onExit={() => setMode("choose")}
+          onPlayBot={(name) => startBot(name)}
+        />
       </main>
     );
   }
@@ -154,8 +184,13 @@ export default function Home() {
       {screen === "name" && (
         <NameEntry
           initialP1={p1}
-          initialP2={p2}
+          initialP2={mode === "bot" ? "" : p2}
+          solo={mode === "bot"}
           onContinue={(a, b) => {
+            if (mode === "bot") {
+              startBot(a);
+              return;
+            }
             setP1(a);
             setP2(b);
             setScreen("lobby");
@@ -163,12 +198,12 @@ export default function Home() {
         />
       )}
 
-      {screen === "lobby" && (
+      {screen === "lobby" && mode !== "bot" && (
         <Lobby
           p1={p1}
           p2={p2}
           onStart={startMatch}
-          onBack={() => setScreen("name")}
+          onBack={() => setMode("choose")}
         />
       )}
 
@@ -187,6 +222,7 @@ export default function Home() {
           results={results}
           onResolve={onResolve}
           onNext={onNext}
+          vsComputer={mode === "bot"}
         />
       )}
 

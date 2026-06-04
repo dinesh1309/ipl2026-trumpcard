@@ -47,12 +47,19 @@ const PHASE_META: Record<Phase, { label: string; color: string; note: string }> 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-export function OnlineGame({ onExit }: { onExit: () => void }) {
+export function OnlineGame({
+  onExit,
+  onPlayBot,
+}: {
+  onExit: () => void;
+  onPlayBot: (name: string) => void;
+}) {
   const [clientId, setClientId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [player, setPlayer] = useState<PlayerDoc | null>(null);
   const [match, setMatch] = useState<MatchDoc | null>(null);
   const [lobbyCount, setLobbyCount] = useState(0);
+  const [noHuman, setNoHuman] = useState(false);
   const joiningRef = useRef(false);
 
   // Subscribe to this player's doc + lobby size.
@@ -81,6 +88,22 @@ export function OnlineGame({ onExit }: { onExit: () => void }) {
       clearInterval(id);
     };
   }, [clientId, player?.status]);
+
+  // If no human turns up within ~15s of waiting, offer an AI agent instead.
+  useEffect(() => {
+    if (player?.status !== "waiting") {
+      setNoHuman(false);
+      return;
+    }
+    const t = setTimeout(() => setNoHuman(true), 15000);
+    return () => clearTimeout(t);
+  }, [player?.status]);
+
+  async function deployAgent() {
+    // Leave the lobby cleanly, then hand off to the single-player bot match.
+    if (clientId) await leaveLobby(clientId);
+    onPlayBot(name);
+  }
 
   // Subscribe to the match once we have one.
   const matchId = player?.matchId ?? null;
@@ -176,7 +199,29 @@ export function OnlineGame({ onExit }: { onExit: () => void }) {
             Hi <span className="text-gold font-semibold">{name}</span> · {lobbyCount} in lobby
           </p>
         </div>
-        <HowToPlay defaultOpen />
+
+        {noHuman && (
+          <div className="animate-reveal rounded-2xl border border-[var(--gold)]/35 bg-[var(--gold)]/8 px-5 py-4 text-left">
+            <p className="font-display text-sm font-bold uppercase tracking-[0.18em] text-white">
+              No human available right now
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-dim)]">
+              Nobody&apos;s in the lobby to face you yet — but I can deploy an AI
+              agent to play with you instead.
+            </p>
+            <button
+              onClick={deployAgent}
+              className="font-display mt-3 w-full rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-3.5 text-sm font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)] transition active:scale-[0.98]"
+            >
+              ⚡ Deploy an Agent
+            </button>
+            <p className="mt-2 text-center text-[10px] uppercase tracking-[0.2em] text-[var(--ink-dim)]/70">
+              Or keep waiting for a human
+            </p>
+          </div>
+        )}
+
+        <HowToPlay defaultOpen={!noHuman} />
         <button
           onClick={onExit}
           className="text-xs uppercase tracking-wider text-[var(--ink-dim)] underline"

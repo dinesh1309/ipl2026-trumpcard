@@ -19,6 +19,7 @@ import {
   phaseForRound,
   effectiveValue,
   resolveRound,
+  pickBotStat,
   type Phase,
   type StatDef,
 } from "@/lib/engine";
@@ -49,6 +50,7 @@ export function MatchScreen({
   results,
   onResolve,
   onNext,
+  vsComputer = false,
 }: {
   p1Name: string;
   p2Name: string;
@@ -62,12 +64,15 @@ export function MatchScreen({
   results: ("p1" | "p2" | "tie" | null)[];
   onResolve: (winner: 1 | 2 | "tie", timedOutAttacker?: 1 | 2) => void;
   onNext: () => void;
+  vsComputer?: boolean; // P2 is the computer — it auto-picks when attacking
 }) {
   const phase = phaseForRound(round);
   const meta = PHASE_META[phase];
 
   // Even round -> P1 attacks, odd -> P2 attacks.
   const attackerIsP1 = round % 2 === 0;
+  // The computer is P2, so it attacks on the odd rounds.
+  const botAttacking = vsComputer && !attackerIsP1;
   const attackerName = attackerIsP1 ? p1Name : p2Name;
   const defenderName = attackerIsP1 ? p2Name : p1Name;
   const attackerCard = attackerIsP1 ? p1Deck[round] : p2Deck[round];
@@ -123,14 +128,23 @@ export function MatchScreen({
     return resolveRound(attackerCard, defenderCard, pickedStat, phase);
   }, [timedOut, pickedStat, attackerCard, defenderCard, phase]);
 
-  // Fire the timeout once the clock hits zero.
+  // Fire the timeout once the clock hits zero. The computer never times out.
   useEffect(() => {
-    if (revealed || !now || now < deadline) return;
+    if (botAttacking || revealed || !now || now < deadline) return;
     setTimedOut(true);
     const defender: 1 | 2 = attackerIsP1 ? 2 : 1;
     onResolve(defender, attackerIsP1 ? 1 : 2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, deadline, revealed]);
+  }, [now, deadline, revealed, botAttacking]);
+
+  // Computer's move: when it's the bot's turn to attack, it "thinks" briefly,
+  // then locks in its strongest stat for the phase.
+  useEffect(() => {
+    if (!botAttacking || revealed) return;
+    const t = setTimeout(() => pickStat(pickBotStat(attackerCard, phase)), 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [botAttacking, revealed, round]);
 
   function pickStat(stat: StatDef) {
     if (pickedKey || timedOut) return;
@@ -223,7 +237,14 @@ export function MatchScreen({
 
       {/* Turn indicator + countdown */}
       <div className="mt-4 text-center">
-        {!revealed ? (
+        {!revealed && botAttacking ? (
+          <div className="mx-auto flex max-w-xs items-center justify-center gap-2 rounded-xl border border-[var(--hair)] bg-black/30 py-2.5">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-white/50" />
+            <span className="font-display text-sm font-bold uppercase tracking-[0.15em] text-white/80">
+              {attackerName} is thinking…
+            </span>
+          </div>
+        ) : !revealed ? (
           <div
             className={`mx-auto flex max-w-xs items-center justify-center gap-2 rounded-xl border py-2.5 ${
               remaining !== null && remaining <= 5
@@ -275,17 +296,20 @@ export function MatchScreen({
             outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
           }`}
         >
-          {!revealed ? (
-            <TappableCard
-              card={attackerCard}
-              phase={phase}
-              onPick={pickStat}
-            />
-          ) : (
+          {revealed ? (
             <CardFace
               card={attackerCard}
               highlightStatKey={pickedKey ?? undefined}
               shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
+            />
+          ) : botAttacking ? (
+            // Keep the computer's hand hidden while it decides.
+            <CardFace card={attackerCard} revealed={false} />
+          ) : (
+            <TappableCard
+              card={attackerCard}
+              phase={phase}
+              onPick={pickStat}
             />
           )}
           {revealed && attackerCard.vizag && <VizagStrike key={`atk-${round}`} />}
@@ -317,6 +341,9 @@ export function MatchScreen({
               highlightStatKey={pickedKey ?? undefined}
               shownValue={defenderEff !== undefined ? round1(defenderEff) : undefined}
             />
+          ) : botAttacking ? (
+            // You're defending the computer — your own card stays in view.
+            <CardFace card={defenderCard} />
           ) : (
             <CardFace card={defenderCard} revealed={false} />
           )}

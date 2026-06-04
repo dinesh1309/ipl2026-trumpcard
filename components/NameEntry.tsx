@@ -8,10 +8,12 @@ import { useState } from "react";
 export function NameEntry({
   initialP1 = "",
   initialP2 = "",
+  solo = false,
   onContinue,
 }: {
   initialP1?: string;
   initialP2?: string;
+  solo?: boolean; // single player vs the computer — only one name needed
   onContinue: (p1: string, p2: string) => void;
 }) {
   const [p1, setP1] = useState(initialP1);
@@ -19,11 +21,11 @@ export function NameEntry({
 
   const trimmed1 = p1.trim();
   const trimmed2 = p2.trim();
-  const ready = trimmed1.length > 0 && trimmed2.length > 0;
+  const ready = solo ? trimmed1.length > 0 : trimmed1.length > 0 && trimmed2.length > 0;
 
   function submit() {
     if (!ready) return;
-    onContinue(trimmed1, trimmed2);
+    onContinue(trimmed1, solo ? "Computer" : trimmed2);
   }
 
   return (
@@ -48,21 +50,38 @@ export function NameEntry({
         {/* Inputs */}
         <div className="space-y-4">
           <PlayerInput
-            label="Player 1"
-            badge="P1"
+            label={solo ? "Your Name" : "Player 1"}
+            badge={solo ? "YOU" : "P1"}
             value={p1}
             onChange={setP1}
             placeholder="Enter name"
             autoFocus
+            onEnter={solo ? submit : undefined}
           />
-          <PlayerInput
-            label="Player 2"
-            badge="P2"
-            value={p2}
-            onChange={setP2}
-            placeholder="Enter name"
-            onEnter={submit}
-          />
+          {solo ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-[var(--hair)] bg-black/25 px-4 py-3">
+              <span className="font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/8 text-xs font-bold tracking-wide text-white/70 ring-1 ring-white/15">
+                AI
+              </span>
+              <div>
+                <span className="font-display block text-lg font-semibold text-white/90">
+                  Computer
+                </span>
+                <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--ink-dim)]/80">
+                  Your opponent
+                </span>
+              </div>
+            </div>
+          ) : (
+            <PlayerInput
+              label="Player 2"
+              badge="P2"
+              value={p2}
+              onChange={setP2}
+              placeholder="Enter name"
+              onEnter={submit}
+            />
+          )}
         </div>
 
         <button
@@ -74,7 +93,7 @@ export function NameEntry({
         </button>
 
         <p className="mt-6 text-center text-[11px] uppercase tracking-[0.28em] text-[var(--ink-dim)]/70">
-          Pass &amp; Play · One Phone · Two Players
+          {solo ? "Single Player · You vs The Computer" : "Pass · Play · One Phone · Two Players"}
         </p>
       </div>
     </section>
