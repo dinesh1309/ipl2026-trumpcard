@@ -15,9 +15,13 @@ import { Lobby } from "@/components/Lobby";
 import { MatchScreen } from "@/components/MatchScreen";
 import { ResultScreen } from "@/components/ResultScreen";
 import { OnlineGame } from "@/components/OnlineGame";
+import { CardFace } from "@/components/CardFace";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import type { Card } from "@/lib/cards";
+import { CARD_POOL, type Card } from "@/lib/cards";
 import { selectMatchDeck, TOTAL_ROUNDS } from "@/lib/engine";
+
+// A few card backs for the fanned-cards hero on the landing.
+const FAN_CARDS = CARD_POOL.slice(0, 5);
 
 type Mode = "choose" | "online" | "local" | "bot";
 
@@ -120,49 +124,90 @@ export default function Home() {
 
   if (mode === "choose") {
     return (
-      <main className="floodlight flex min-h-[100svh] w-full flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
-        <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-white">
-            IPL <span className="text-gold">2026</span>
-          </h1>
-          <p className="font-display mt-1 text-lg tracking-[0.3em] text-white/70">
-            TRUMP CARDS
+      <main className="floodlight relative flex min-h-[100svh] w-full flex-1 flex-col items-center justify-center overflow-hidden px-6 text-center">
+        {/* A — big star cutouts flanking on laptop/large screens */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/players/v-kohli.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-0 hidden h-[78%] max-h-[680px] object-contain object-bottom opacity-90 drop-shadow-[0_30px_50px_rgba(0,0,0,0.6)] lg:block xl:left-4"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/players/tm-head.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 right-0 hidden h-[78%] max-h-[680px] -scale-x-100 object-contain object-bottom opacity-90 drop-shadow-[0_30px_50px_rgba(0,0,0,0.6)] lg:block xl:right-4"
+        />
+        {/* A — single faded star behind the content on phones */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/players/v-kohli.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -bottom-4 left-1/2 h-[46%] -translate-x-1/2 object-contain object-bottom opacity-[0.12] blur-[1px] lg:hidden"
+        />
+
+        <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-7">
+          {/* B — fanned trump cards */}
+          <div className="flex items-end justify-center">
+            {FAN_CARDS.map((c, i) => (
+              <div
+                key={c.id}
+                className="-ml-7 w-16 first:ml-0 sm:w-20"
+                style={{
+                  transform: `rotate(${(i - 2) * 11}deg) translateY(${Math.abs(i - 2) * 9}px)`,
+                  transformOrigin: "bottom center",
+                  zIndex: 5 - Math.abs(i - 2),
+                }}
+              >
+                <CardFace card={c} revealed={false} size="mini" />
+              </div>
+            ))}
+          </div>
+
+          {/* title */}
+          <div>
+            <h1 className="font-display text-4xl font-bold tracking-tight text-white">
+              IPL <span className="text-gold">2026</span>
+            </h1>
+            <p className="font-display mt-1 text-lg tracking-[0.3em] text-white/70">TRUMP CARDS</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.3em] text-[var(--ink-dim)]">Vizag Edition</p>
+          </div>
+
+          <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-[var(--ink-dim)]">
+            Choose your format
           </p>
-          <p className="mt-2 text-xs uppercase tracking-[0.3em] text-[var(--ink-dim)]">
-            Vizag Edition
-          </p>
-        </div>
-        <div className="flex w-full max-w-xs flex-col gap-3">
-          {isFirebaseConfigured && (
-            <button
-              onClick={() => setMode("online")}
-              className="font-display rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
-            >
-              Play Online
-            </button>
-          )}
-          <button
-            onClick={() => {
-              setMode("bot");
-              setScreen("name");
-            }}
-            className={`font-display rounded-2xl py-4 text-base font-bold uppercase tracking-widest ${
-              isFirebaseConfigured
-                ? "border border-[var(--hair)] bg-black/30 text-white"
-                : "bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
-            }`}
-          >
-            Play vs Computer
-          </button>
-          <button
-            onClick={() => {
-              setMode("local");
-              setScreen("name");
-            }}
-            className="font-display rounded-2xl border border-[var(--hair)] bg-black/30 py-4 text-base font-bold uppercase tracking-widest text-white"
-          >
-            Pass &amp; Play
-          </button>
+
+          {/* modes with cricket one-liners */}
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            {isFirebaseConfigured && (
+              <ModeButton
+                primary
+                onClick={() => setMode("online")}
+                label="Play Online"
+                tagline="Take on a real rival, live 1v1"
+              />
+            )}
+            <ModeButton
+              primary={!isFirebaseConfigured}
+              onClick={() => {
+                setMode("bot");
+                setScreen("name");
+              }}
+              label="Play vs Computer"
+              tagline="Net session against the AI"
+            />
+            <ModeButton
+              onClick={() => {
+                setMode("local");
+                setScreen("name");
+              }}
+              label="Pass & Play"
+              tagline="One phone, two players — pass the bat"
+            />
+          </div>
         </div>
       </main>
     );
@@ -242,5 +287,35 @@ export default function Home() {
         />
       )}
     </main>
+  );
+}
+
+function ModeButton({
+  label,
+  tagline,
+  onClick,
+  primary = false,
+}: {
+  label: string;
+  tagline: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`font-display flex flex-col items-center gap-0.5 rounded-2xl py-3 transition active:scale-[0.98] ${
+        primary
+          ? "bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] text-[#161003] shadow-[0_12px_30px_-10px_rgba(245,197,24,0.6)]"
+          : "border border-[var(--hair)] bg-black/40 text-white backdrop-blur-sm"
+      }`}
+    >
+      <span className="text-base font-bold uppercase tracking-widest">{label}</span>
+      <span
+        className={`text-[11px] font-medium normal-case tracking-normal ${primary ? "text-[#161003]/75" : "text-[var(--ink-dim)]"}`}
+      >
+        {tagline}
+      </span>
+    </button>
   );
 }
