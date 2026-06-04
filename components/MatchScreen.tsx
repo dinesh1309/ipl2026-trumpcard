@@ -11,6 +11,7 @@ import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
 import { BallStamp, VizagStrike, CapturedPile, useCountUp } from "@/components/MatchFx";
+import { MobileMatch } from "@/components/MobileMatch";
 import type { Card } from "@/lib/cards";
 import {
   STATS,
@@ -18,6 +19,7 @@ import {
   TURN_SECONDS,
   phaseForRound,
   effectiveValue,
+  isMissing,
   resolveRound,
   pickBotStat,
   type Phase,
@@ -324,16 +326,58 @@ export function MatchScreen({
   const leftShow = leftIsAttacker ? attackerCardVisible : defenderCardVisible;
   const rightShow = leftIsAttacker ? defenderCardVisible : attackerCardVisible;
 
+  // ---- Phone (one-card) layout props (P1 = left, P2 = right) ----
+  const p1Card = p1Deck[round];
+  const p2Card = p2Deck[round];
+  const mobileWinner: "left" | "right" | "tie" | null = outcome
+    ? outcome.winner === "tie"
+      ? "tie"
+      : (outcome.winner === "attacker") === attackerIsP1
+        ? "left"
+        : "right"
+    : null;
+  // vs Computer: you (P1) always see your own card; pass-and-play: the attacker's
+  // card stays focal (defender's card hidden on the shared phone).
+  const mobileFrontCard = vsComputer ? p1Card : attackerCard;
+  const mobileFrontTappable = vsComputer ? !revealed && !botAttacking : !revealed;
+  const mobileWaiting = vsComputer && botAttacking && !revealed ? "Computer is choosing…" : null;
+
   return (
     // Full-width clipper: stops vertical scroll on laptop/large screens without
     // clipping the big side photos horizontally (the section stays max-w-4xl, so
     // the header + outcome stay centered; only this wrapper does the clipping).
     <div className="flex w-full flex-1 flex-col lg:h-[100svh] lg:overflow-hidden">
+      <PhaseIntro round={round} />
+
+      {/* Phone (< md): one card that flips between the pick and the duel. */}
+      <MobileMatch
+        phase={phase}
+        round={round}
+        left={{ name: p1Name, card: p1Card, value: pickedStat ? round1(effectiveValue(p1Card, pickedStat, phase)) : 0, missing: pickedStat ? isMissing(p1Card, pickedStat) : false, score: scoreP1 }}
+        right={{ name: p2Name, card: p2Card, value: pickedStat ? round1(effectiveValue(p2Card, pickedStat, phase)) : 0, missing: pickedStat ? isMissing(p2Card, pickedStat) : false, score: scoreP2 }}
+        frontCard={mobileFrontCard}
+        frontTappable={mobileFrontTappable}
+        onPick={pickStat}
+        pickPrompt={vsComputer ? "Your turn" : `${attackerName}'s turn`}
+        waitingText={mobileWaiting}
+        turnSecs={remaining}
+        revealed={revealed}
+        picked={pickedStat}
+        lowerWins={pickedStat?.lowerWins ?? false}
+        timedOut={timedOut}
+        vizag={vizagInPlay}
+        winner={mobileWinner}
+        advanceCan={revealed}
+        onAdvance={onNext}
+        advanceLabel={round + 1 >= TOTAL_ROUNDS ? "Tap for result ▸" : "Tap for next ball ▸"}
+        advanceWaiting={false}
+      />
+
+      {/* Tablet / laptop (md+): two cards side by side. */}
     <section
       onClick={() => revealed && onNext()}
-      className={`relative mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl lg:min-h-0 lg:pb-3 ${revealed ? "cursor-pointer" : ""}`}
+      className={`relative mx-auto hidden min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:flex md:max-w-4xl lg:min-h-0 lg:pb-3 ${revealed ? "cursor-pointer" : ""}`}
     >
-      <PhaseIntro round={round} />
       {/* auto-advance countdown line */}
       {revealed && (
         <span

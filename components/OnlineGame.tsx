@@ -12,6 +12,7 @@ import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
 import { BallStamp, VizagStrike, WinSparks, CapturedPile, useCountUp, Confetti } from "@/components/MatchFx";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { MobileMatch } from "@/components/MobileMatch";
 import { HowToPlay } from "@/components/Lobby";
 import {
   STATS,
@@ -443,12 +444,48 @@ function OnlineMatch({
   const myCaptureStyle = myLost ? { transform: "translateX(46px) scale(0.8)" } : undefined;
   const oppCaptureStyle = oppLost ? { transform: "translateX(-46px) scale(0.8)" } : undefined;
 
+  // Phone (one-card) winner mapping — you are the left side.
+  const mobileWinner: "left" | "right" | "tie" | null = !outcome
+    ? null
+    : outcome.winner === "tie"
+      ? "tie"
+      : iWonBall
+        ? "left"
+        : "right";
+
   return (
-    <section
-      onClick={() => canAdvance && setNext(matchId, isP1)}
-      className={`relative mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl ${canAdvance ? "cursor-pointer" : ""}`}
-    >
+    <>
       <PhaseIntro round={match.round} />
+
+      {/* Phone (< md): one card that flips between the pick and the duel. */}
+      <MobileMatch
+        phase={phase}
+        round={match.round}
+        left={{ name: myName, card: myCard, value: myEff ?? 0, missing: myOutcomeMissing, score: myScore }}
+        right={{ name: oppName, card: oppCard, value: oppEff ?? 0, missing: oppOutcomeMissing, score: oppScore }}
+        frontCard={myCard}
+        frontTappable={amAttacker && !outcome}
+        onPick={(s) => submitPick(matchId, match.round, s.key, clientId)}
+        pickPrompt="Your turn"
+        waitingText={!amAttacker && !outcome ? `${oppName} is choosing…` : null}
+        turnSecs={remaining}
+        revealed={!!outcome}
+        picked={pickedStat ?? null}
+        lowerWins={pickedStat?.lowerWins ?? false}
+        timedOut={outcome?.timedOut ?? false}
+        vizag={!!outcome && (myCard.vizag || oppCard.vizag)}
+        winner={mobileWinner}
+        advanceCan={canAdvance}
+        onAdvance={() => setNext(matchId, isP1)}
+        advanceLabel={match.round + 1 >= TOTAL_ROUNDS ? "Tap for result ▸" : "Tap for next ball ▸"}
+        advanceWaiting={iPressedNext}
+      />
+
+      {/* Tablet / laptop (md+): two cards side by side. */}
+      <section
+        onClick={() => canAdvance && setNext(matchId, isP1)}
+        className={`relative mx-auto hidden min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:flex md:max-w-4xl ${canAdvance ? "cursor-pointer" : ""}`}
+      >
       {/* shared auto-advance countdown line */}
       {outcome && (
         <span
@@ -708,6 +745,7 @@ function OnlineMatch({
 
         </div>
       )}
-    </section>
+      </section>
+    </>
   );
 }
