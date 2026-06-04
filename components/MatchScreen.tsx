@@ -200,12 +200,10 @@ export function MatchScreen({
   const attackerCardVisible = revealed || !botAttacking;
   const defenderCardVisible = revealed || botAttacking;
 
-  // On laptop/large screens everything must fit in one viewport (no scroll).
-  // During play the cards can be roomy; once revealed, the outcome banner + Next
-  // appear below, so the cards shrink to make room.
-  const cardWidthCls = revealed
-    ? "lg:max-w-[235px] xl:max-w-[265px] 2xl:max-w-[300px]"
-    : "lg:max-w-[290px] xl:max-w-[330px] 2xl:max-w-[370px]";
+  // One card size for both turn and reveal so the standing photos always fit
+  // alongside the cards on wide screens (no edge-clipping), and everything still
+  // fits one viewport once the outcome banner appears.
+  const cardWidthCls = "lg:max-w-[235px] xl:max-w-[265px] 2xl:max-w-[300px]";
 
   const attackerBlock = (
     <div className={`w-full md:flex-1 lg:flex lg:flex-none lg:shrink-0 lg:flex-col ${cardWidthCls}`}>
