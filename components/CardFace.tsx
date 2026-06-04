@@ -2,6 +2,7 @@
 
 import { Card } from "@/lib/cards";
 import { STATS, isMissing } from "@/lib/engine";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 
 /** Average the channels of a hex colour to decide black/white text on chips. */
 function isLight(hex: string): boolean {
@@ -12,16 +13,6 @@ function isLight(hex: string): boolean {
       : [0, 2, 4].map((i) => parseInt(m.slice(i, i + 2), 16));
   const [r, g, b] = n;
   return 0.299 * r + 0.587 * g + 0.114 * b > 150;
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 const battingStats = STATS.filter((s) => s.group === "batting");
@@ -130,19 +121,9 @@ export function CardFace({
         </div>
       )}
 
-      {/* Header: monogram + name + role */}
+      {/* Header: headshot + name + role */}
       <div className="relative flex items-center gap-3 px-4 pt-4">
-        <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold ring-1 ring-white/20"
-          style={{
-            background: "rgba(255,255,255,0.12)",
-            backdropFilter: "blur(4px)",
-          }}
-        >
-          <span className="font-display tracking-wide text-white">
-            {initials(card.name)}
-          </span>
-        </div>
+        <PlayerAvatar card={card} />
         <div className="min-w-0">
           <h3 className="font-display truncate text-xl font-bold leading-tight text-white">
             {card.name}

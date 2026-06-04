@@ -6,6 +6,7 @@
 
 import { Card } from "@/lib/cards";
 import { STATS, effectiveValue, isMissing, type Phase, type StatDef } from "@/lib/engine";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -45,20 +46,7 @@ export function TappableCard({
       )}
 
       <div className="relative flex items-center gap-3 px-4 pt-4">
-        <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold ring-1 ring-white/20"
-          style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(4px)" }}
-        >
-          <span className="font-display tracking-wide text-white">
-            {card.name
-              .split(/\s+/)
-              .map((w) => w[0])
-              .filter(Boolean)
-              .slice(0, 2)
-              .join("")
-              .toUpperCase()}
-          </span>
-        </div>
+        <PlayerAvatar card={card} />
         <div className="min-w-0">
           <h3 className="font-display truncate text-xl font-bold leading-tight text-white">
             {card.name}

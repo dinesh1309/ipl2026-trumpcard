@@ -1,0 +1,277 @@
+{
+  "a-kamboj": {
+    "iplId": "3106",
+    "iplName": "Anshul Kamboj",
+    "team": "CSK"
+  },
+  "a-raghuvanshi": {
+    "iplId": "787",
+    "iplName": "Angkrish Raghuvanshi",
+    "team": "KKR"
+  },
+  "abhishek-sharma": {
+    "iplId": "212",
+    "iplName": "Abhishek Sharma",
+    "team": "SRH"
+  },
+  "am-rahane": {
+    "iplId": "44",
+    "iplName": "Ajinkya Rahane",
+    "team": "KKR"
+  },
+  "ar-patel": {
+    "iplId": "110",
+    "iplName": "Axar Patel",
+    "team": "DC"
+  },
+  "arshdeep-singh": {
+    "iplId": "125",
+    "iplName": "Arshdeep Singh",
+    "team": "PBKS"
+  },
+  "as-roy": {
+    "iplId": "160",
+    "iplName": "Anukul Roy",
+    "team": "KKR"
+  },
+  "b-kumar": {
+    "iplId": "15",
+    "iplName": "Bhuvneshwar Kumar",
+    "team": "RCB"
+  },
+  "b-sai-sudharsan": {
+    "iplId": "976",
+    "iplName": "Sai Sudharsan",
+    "team": "GT"
+  },
+  "c-green": {
+    "iplId": "550",
+    "iplName": "Cameron Green",
+    "team": "KKR"
+  },
+  "cpl-connolly": {
+    "iplId": "848",
+    "iplName": "Cooper Connolly",
+    "team": "PBKS"
+  },
+  "d-ferreira": {
+    "iplId": "2033",
+    "iplName": "Donovan Ferreira",
+    "team": "RR"
+  },
+  "d-padikkal": {
+    "iplId": "200",
+    "iplName": "Devdutt Padikkal",
+    "team": "RCB"
+  },
+  "dc-jurel": {
+    "iplId": "1004",
+    "iplName": "Dhruv Jurel",
+    "team": "RR"
+  },
+  "e-malinga": {
+    "iplId": "3339",
+    "iplName": "Eshan Malinga",
+    "team": "SRH"
+  },
+  "h-klaasen": {
+    "iplId": "202",
+    "iplName": "Heinrich Klaasen",
+    "team": "SRH"
+  },
+  "ishan-kishan": {
+    "iplId": "164",
+    "iplName": "Ishan Kishan",
+    "team": "SRH"
+  },
+  "jc-archer": {
+    "iplId": "181",
+    "iplName": "Jofra Archer",
+    "team": "RR"
+  },
+  "jc-buttler": {
+    "iplId": "182",
+    "iplName": "Jos Buttler",
+    "team": "GT"
+  },
+  "jm-sharma": {
+    "iplId": "1000",
+    "iplName": "Jitesh Sharma",
+    "team": "RCB"
+  },
+  "k-rabada": {
+    "iplId": "116",
+    "iplName": "Kagiso Rabada",
+    "team": "GT"
+  },
+  "kartik-tyagi": {
+    "iplId": "536",
+    "iplName": "Kartik Tyagi",
+    "team": "KKR"
+  },
+  "kh-pandya": {
+    "iplId": "17",
+    "iplName": "Krunal Pandya",
+    "team": "RCB"
+  },
+  "kl-rahul": {
+    "iplId": "19",
+    "iplName": "KL Rahul",
+    "team": "DC"
+  },
+  "mohammed-siraj": {
+    "iplId": "63",
+    "iplName": "Mohammed Siraj",
+    "team": "GT"
+  },
+  "mr-marsh": {
+    "iplId": "40",
+    "iplName": "Mitchell Marsh",
+    "team": "LSG"
+  },
+  "n-pooran": {
+    "iplId": "136",
+    "iplName": "Nicholas Pooran",
+    "team": "LSG"
+  },
+  "naman-dhir": {
+    "iplId": "3107",
+    "iplName": "Naman Dhir",
+    "team": "MI"
+  },
+  "nitish-reddy": {
+    "iplId": "1944",
+    "iplName": "Nitish Kumar Reddy",
+    "team": "SRH"
+  },
+  "noor-ahmad": {
+    "iplId": "975",
+    "iplName": "Noor Ahmad",
+    "team": "CSK"
+  },
+  "nt-tilak-varma": {
+    "iplId": "993",
+    "iplName": "N. Tilak Varma",
+    "team": "MI"
+  },
+  "p-arya": {
+    "iplId": "3571",
+    "iplName": "Priyansh Arya",
+    "team": "PBKS"
+  },
+  "prabhsimran-singh": {
+    "iplId": "137",
+    "iplName": "Prabhsimran Singh",
+    "team": "PBKS"
+  },
+  "prince-yadav": {
+    "iplId": "1225",
+    "iplName": "Prince Yadav",
+    "team": "LSG"
+  },
+  "r-parag": {
+    "iplId": "189",
+    "iplName": "Riyan Parag",
+    "team": "RR"
+  },
+  "r-shepherd": {
+    "iplId": "371",
+    "iplName": "Romario Shepherd",
+    "team": "RCB"
+  },
+  "r-tewatia": {
+    "iplId": "120",
+    "iplName": "Rahul Tewatia",
+    "team": "GT"
+  },
+  "ra-jadeja": {
+    "iplId": "46",
+    "iplName": "Ravindra Jadeja",
+    "team": "RR"
+  },
+  "rashid-khan": {
+    "iplId": "218",
+    "iplName": "Rashid Khan",
+    "team": "GT"
+  },
+  "rd-gaikwad": {
+    "iplId": "102",
+    "iplName": "Ruturaj Gaikwad",
+    "team": "CSK"
+  },
+  "rk-singh": {
+    "iplId": "152",
+    "iplName": "Rinku Singh",
+    "team": "KKR"
+  },
+  "rm-patidar": {
+    "iplId": "597",
+    "iplName": "Rajat Patidar",
+    "team": "RCB"
+  },
+  "rr-pant": {
+    "iplId": "18",
+    "iplName": "Rishabh Pant",
+    "team": "LSG"
+  },
+  "s-arora": {
+    "iplId": "4556",
+    "iplName": "Salil Arora",
+    "team": "SRH"
+  },
+  "shubman-gill": {
+    "iplId": "62",
+    "iplName": "Shubman Gill",
+    "team": "GT"
+  },
+  "ss-iyer": {
+    "iplId": "12",
+    "iplName": "Shreyas Iyer",
+    "team": "PBKS"
+  },
+  "sv-samson": {
+    "iplId": "190",
+    "iplName": "Sanju Samson",
+    "team": "CSK"
+  },
+  "t-stubbs": {
+    "iplId": "1017",
+    "iplName": "Tristan Stubbs",
+    "team": "DC"
+  },
+  "th-david": {
+    "iplId": "636",
+    "iplName": "Tim David",
+    "team": "RCB"
+  },
+  "tm-head": {
+    "iplId": "37",
+    "iplName": "Travis Head",
+    "team": "SRH"
+  },
+  "v-kohli": {
+    "iplId": "2",
+    "iplName": "Virat Kohli",
+    "team": "RCB"
+  },
+  "v-sooryavanshi": {
+    "iplId": "3498",
+    "iplName": "Vaibhav Sooryavanshi",
+    "team": "RR"
+  },
+  "washington-sundar": {
+    "iplId": "20",
+    "iplName": "Washington Sundar",
+    "team": "GT"
+  },
+  "ybk-jaiswal": {
+    "iplId": "533",
+    "iplName": "Yashasvi Jaiswal",
+    "team": "RR"
+  },
+  "ys-chahal": {
+    "iplId": "10",
+    "iplName": "Yuzvendra Chahal",
+    "team": "PBKS"
+  }
+}
