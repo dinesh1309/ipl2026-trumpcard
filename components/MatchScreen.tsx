@@ -179,6 +179,83 @@ export function MatchScreen({
     ? effectiveValue(defenderCard, pickedStat, phase)
     : undefined;
 
+  // A card is "face-up" (safe to also show the player's big photo) when: the
+  // attacker card is up except while the bot is thinking; the defender card is
+  // up only after the reveal (or when the human is defending the bot).
+  const attackerCardVisible = revealed || !botAttacking;
+  const defenderCardVisible = revealed || botAttacking;
+
+  const attackerBlock = (
+    <div className="w-full md:flex-1 lg:max-w-sm lg:flex-none lg:shrink-0">
+      <CardLabel
+        name={attackerName}
+        tag={attackerIsP1 ? "P1" : "P2"}
+        role="Attacker"
+        win={outcome?.winner === "attacker"}
+      />
+      <div
+        className={`relative mt-1.5 transition duration-300 ${
+          outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
+        }`}
+      >
+        {revealed ? (
+          <CardFace
+            card={attackerCard}
+            highlightStatKey={pickedKey ?? undefined}
+            shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
+          />
+        ) : botAttacking ? (
+          // Keep the computer's hand hidden while it decides.
+          <CardFace card={attackerCard} revealed={false} />
+        ) : (
+          <TappableCard card={attackerCard} phase={phase} onPick={pickStat} />
+        )}
+        {revealed && attackerCard.vizag && <VizagStrike key={`atk-${round}`} />}
+      </div>
+    </div>
+  );
+
+  const defenderBlock = (
+    <div className="w-full md:flex-1 lg:max-w-sm lg:flex-none lg:shrink-0">
+      <CardLabel
+        name={defenderName}
+        tag={attackerIsP1 ? "P2" : "P1"}
+        role="Defender"
+        win={outcome?.winner === "defender"}
+      />
+      <div
+        className={`relative mt-1.5 transition duration-300 ${
+          outcome?.winner === "attacker" ? "opacity-55 saturate-50" : ""
+        }`}
+      >
+        {revealed ? (
+          <CardFace
+            card={defenderCard}
+            highlightStatKey={pickedKey ?? undefined}
+            shownValue={defenderEff !== undefined ? round1(defenderEff) : undefined}
+          />
+        ) : botAttacking ? (
+          // You're defending the computer — your own card stays in view.
+          <CardFace card={defenderCard} />
+        ) : (
+          <CardFace card={defenderCard} revealed={false} />
+        )}
+        {revealed && defenderCard.vizag && <VizagStrike key={`def-${round}`} />}
+      </div>
+    </div>
+  );
+
+  // Fixed screen sides: vs Computer pins you (P1) left and the computer right;
+  // otherwise the attacker sits on the left. Each side gets a big standing photo
+  // (laptop/large screens only) that fades in once that card is face-up.
+  const leftIsAttacker = vsComputer ? attackerIsP1 : true;
+  const leftBlock = leftIsAttacker ? attackerBlock : defenderBlock;
+  const rightBlock = leftIsAttacker ? defenderBlock : attackerBlock;
+  const leftCardData = leftIsAttacker ? attackerCard : defenderCard;
+  const rightCardData = leftIsAttacker ? defenderCard : attackerCard;
+  const leftShow = leftIsAttacker ? attackerCardVisible : defenderCardVisible;
+  const rightShow = leftIsAttacker ? defenderCardVisible : attackerCardVisible;
+
   return (
     <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
       <PhaseIntro round={round} />
@@ -282,85 +359,20 @@ export function MatchScreen({
         )}
       </div>
 
-      {/* Cards: stacked on mobile, side-by-side on laptop.
-          Vs Computer: pin you (P1) to the left/top and the computer (P2) to the
-          right/bottom every ball, so the layout never flips on the human. */}
-      <div className="mt-3 flex flex-col md:flex-row md:items-start md:gap-5">
-        {/* Attacker card — face-up with tappable stat rows */}
-        <div
-          className="md:flex-1"
-          style={vsComputer ? { order: attackerIsP1 ? 0 : 2 } : undefined}
-        >
-          <CardLabel
-            name={attackerName}
-            tag={attackerIsP1 ? "P1" : "P2"}
-            role="Attacker"
-            win={outcome?.winner === "attacker"}
-          />
-        <div
-          className={`relative mt-1.5 transition duration-300 ${
-            outcome?.winner === "defender" ? "opacity-55 saturate-50" : ""
-          }`}
-        >
-          {revealed ? (
-            <CardFace
-              card={attackerCard}
-              highlightStatKey={pickedKey ?? undefined}
-              shownValue={attackerEff !== undefined ? round1(attackerEff) : undefined}
-            />
-          ) : botAttacking ? (
-            // Keep the computer's hand hidden while it decides.
-            <CardFace card={attackerCard} revealed={false} />
-          ) : (
-            <TappableCard
-              card={attackerCard}
-              phase={phase}
-              onPick={pickStat}
-            />
-          )}
-          {revealed && attackerCard.vizag && <VizagStrike key={`atk-${round}`} />}
-        </div>
-      </div>
-
-        <div
-          className="my-2 flex items-center justify-center md:my-0 md:self-center"
-          style={vsComputer ? { order: 1 } : undefined}
-        >
-          <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
-            VS
-          </span>
-        </div>
-
-        {/* Defender card — hidden until pick locks */}
-        <div
-          className="md:flex-1"
-          style={vsComputer ? { order: attackerIsP1 ? 2 : 0 } : undefined}
-        >
-          <CardLabel
-            name={defenderName}
-            tag={attackerIsP1 ? "P2" : "P1"}
-            role="Defender"
-            win={outcome?.winner === "defender"}
-          />
-        <div
-          className={`relative mt-1.5 transition duration-300 ${
-            outcome?.winner === "attacker" ? "opacity-55 saturate-50" : ""
-          }`}
-        >
-          {revealed ? (
-            <CardFace
-              card={defenderCard}
-              highlightStatKey={pickedKey ?? undefined}
-              shownValue={defenderEff !== undefined ? round1(defenderEff) : undefined}
-            />
-          ) : botAttacking ? (
-            // You're defending the computer — your own card stays in view.
-            <CardFace card={defenderCard} />
-          ) : (
-            <CardFace card={defenderCard} revealed={false} />
-          )}
-          {revealed && defenderCard.vizag && <VizagStrike key={`def-${round}`} />}
+      {/* Cards: stacked on mobile, side-by-side on tablet. On laptop/large
+          screens the row goes full-bleed and a big standing player photo flanks
+          each card (you on the left, computer on the right). */}
+      <div className="mt-3 lg:mx-[calc(50%-50vw)] lg:w-screen lg:overflow-hidden">
+        <div className="mx-auto flex max-w-md flex-col md:max-w-4xl md:flex-row md:items-start md:gap-5 lg:max-w-none lg:items-end lg:justify-center lg:gap-0 lg:px-4">
+          <BigPlayer card={leftCardData} show={leftShow} side="left" />
+          {leftBlock}
+          <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
+            <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
+              VS
+            </span>
           </div>
+          {rightBlock}
+          <BigPlayer card={rightCardData} show={rightShow} side="right" />
         </div>
       </div>
 
@@ -429,6 +441,44 @@ export function MatchScreen({
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+/**
+ * Big transparent player photo that stands beside its card on laptop/large
+ * screens only (hidden on mobile/tablet). Width is always reserved so the cards
+ * don't shift when the opponent's photo fades in on reveal; `show` toggles the
+ * fade. The right-side photo is mirrored so the player faces inward.
+ */
+function BigPlayer({
+  card,
+  show,
+  side,
+}: {
+  card: Card;
+  show: boolean;
+  side: "left" | "right";
+}) {
+  return (
+    <div
+      aria-hidden
+      className={`hidden self-end lg:block lg:w-[260px] lg:shrink-0 xl:w-[360px] 2xl:w-[430px] ${
+        side === "left" ? "lg:-mr-10 xl:-mr-14" : "lg:-ml-10 xl:-ml-14"
+      }`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/players/${card.id}.png`}
+        alt=""
+        draggable={false}
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+        }}
+        className={`w-full drop-shadow-[0_30px_45px_rgba(0,0,0,0.6)] transition-opacity duration-500 ${
+          show ? "opacity-100" : "opacity-0"
+        } ${side === "right" ? "-scale-x-100" : ""}`}
+      />
+    </div>
+  );
 }
 
 function ScoreChip({

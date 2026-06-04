@@ -4,7 +4,8 @@
 # Source: https://documents.iplt20.com/ipl/IPLHeadshot2026/<iplId>.png
 #   (transparent 1024x1024 PNG cutouts, the same images shown on iplt20.com squads)
 # Mapping: scripts/headshot-map.json  ->  { "<card.id>": { "iplId", "iplName", "team" } }
-# Files are saved as public/players/<card.id>.png and resized to 256px for the web.
+# Files are saved as public/players/<card.id>.png and resized to 640px for the web
+# (sharp for the big "standing beside the card" image on laptop/large screens).
 #
 # To refresh for a new season:
 #   1. Bump the IPLHeadshot2026 year below if the CDN path changes.
@@ -45,7 +46,7 @@ for cid, info in m.items():
         continue
     if have_pil:
         im = Image.open(dst).convert("RGBA")
-        im.thumbnail((256, 256), Image.LANCZOS)
+        im.thumbnail((640, 640), Image.LANCZOS)
         im.save(dst, "PNG", optimize=True)
     ok += 1
 print(f"done: {ok} ok, {fail} failed")
