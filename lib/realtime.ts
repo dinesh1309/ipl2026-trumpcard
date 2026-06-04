@@ -32,6 +32,10 @@ import {
   selectMatchDeck,
 } from "@/lib/engine";
 
+// After a ball resolves, both devices auto-advance at this delay (tap advances
+// sooner: either both tapping Next, or the shared deadline — whichever first).
+const ADVANCE_SECONDS = 10;
+
 const BY_ID = new Map(CARD_POOL.map((c) => [c.id, c]));
 export const cardById = (id: string): Card => BY_ID.get(id)!;
 
@@ -75,6 +79,7 @@ export interface MatchDoc {
   pick: MatchPick | null;
   outcome: MatchOutcome | null;
   turnDeadline: number | null; // epoch ms; attacker must pick before this
+  advanceDeadline: number | null; // epoch ms; after a ball resolves, auto-advance at this time
   p1Next: boolean;
   p2Next: boolean;
   history: ("p1" | "p2" | "tie")[]; // per-ball winner, for the over ticker
@@ -184,6 +189,7 @@ export async function attemptMatchmake(clientId: string): Promise<string | null>
         pick: null,
         outcome: null,
         turnDeadline: null,
+        advanceDeadline: null,
         p1Next: false,
         p2Next: false,
         history: [],
@@ -312,43 +318,75 @@ export async function reconcile(matchId: string, m: MatchDoc, clientId: string):
       winner: r.winner,
       timedOut: false,
     };
-    await updateDoc(ref, { outcome, scoreP1, scoreP2, turnDeadline: null });
+    await updateDoc(ref, {
+      outcome,
+      scoreP1,
+      scoreP2,
+      turnDeadline: null,
+      advanceDeadline: Date.now() + ADVANCE_SECONDS * 1000,
+    });
     return;
   }
 
-  // 3) Advance once both players tap Next.
+  // 3) Advance once both players tap Next (the shared deadline also advances —
+  //    see resolveAdvanceTimeout).
   if (m.outcome && m.outcome.round === m.round && m.p1Next && m.p2Next) {
-    const o = m.outcome;
-    const ballResult: "p1" | "p2" | "tie" =
-      o.winner === "tie"
-        ? "tie"
-        : (o.winner === "attacker") === (m.round % 2 === 0)
-          ? "p1"
-          : "p2";
-    const history = [...(m.history ?? []), ballResult];
-    const nextRound = m.round + 1;
-    if (nextRound >= TOTAL_ROUNDS) {
-      const winner: 1 | 2 | "tie" =
-        m.scoreP1 === m.scoreP2 ? "tie" : m.scoreP1 > m.scoreP2 ? 1 : 2;
-      await updateDoc(ref, {
-        status: "finished",
-        winner,
-        winReason: "score",
-        history,
-        turnDeadline: null,
-      });
-    } else {
-      await updateDoc(ref, {
-        round: nextRound,
-        pick: null,
-        outcome: null,
-        p1Next: false,
-        p2Next: false,
-        history,
-        turnDeadline: Date.now() + TURN_SECONDS * 1000,
-      });
-    }
+    await updateDoc(ref, advanceUpdate(m));
   }
+}
+
+/** Build the doc update that moves the match to the next ball (or finishes it). */
+function advanceUpdate(m: MatchDoc): Record<string, unknown> {
+  const o = m.outcome!;
+  const ballResult: "p1" | "p2" | "tie" =
+    o.winner === "tie"
+      ? "tie"
+      : (o.winner === "attacker") === (m.round % 2 === 0)
+        ? "p1"
+        : "p2";
+  const history = [...(m.history ?? []), ballResult];
+  const nextRound = m.round + 1;
+  if (nextRound >= TOTAL_ROUNDS) {
+    const winner: 1 | 2 | "tie" =
+      m.scoreP1 === m.scoreP2 ? "tie" : m.scoreP1 > m.scoreP2 ? 1 : 2;
+    return {
+      status: "finished",
+      winner,
+      winReason: "score",
+      history,
+      turnDeadline: null,
+      advanceDeadline: null,
+    };
+  }
+  return {
+    round: nextRound,
+    pick: null,
+    outcome: null,
+    p1Next: false,
+    p2Next: false,
+    history,
+    turnDeadline: Date.now() + TURN_SECONDS * 1000,
+    advanceDeadline: null,
+  };
+}
+
+/**
+ * Shared auto-advance. When the advanceDeadline passes and the match hasn't
+ * already advanced, the P1 client moves both devices to the next ball. Call from
+ * a client timer when the deadline elapses.
+ */
+export async function resolveAdvanceTimeout(
+  matchId: string,
+  m: MatchDoc,
+  clientId: string
+): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  if (clientId !== m.p1Id) return; // P1 authoritative
+  if (m.status !== "active") return;
+  if (!m.outcome || m.outcome.round !== m.round) return; // nothing to advance
+  if (!m.advanceDeadline || Date.now() < m.advanceDeadline) return; // not yet
+  await updateDoc(doc(db, "matches", matchId), advanceUpdate(m));
 }
 
 /**
@@ -417,5 +455,6 @@ export async function resolveTimeout(
     strikesP1,
     strikesP2,
     turnDeadline: null,
+    advanceDeadline: Date.now() + ADVANCE_SECONDS * 1000,
   });
 }

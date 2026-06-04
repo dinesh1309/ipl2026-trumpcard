@@ -10,7 +10,7 @@ import { CardFace } from "@/components/CardFace";
 import { PhaseIntro } from "@/components/PhaseIntro";
 import { OverTicker } from "@/components/OverTicker";
 import { TappableCard } from "@/components/TappableCard";
-import { BallStamp, VizagStrike, WinSparks } from "@/components/MatchFx";
+import { BallStamp, VizagStrike, WinSparks, CapturedPile, useCountUp } from "@/components/MatchFx";
 import { HowToPlay } from "@/components/Lobby";
 import {
   STATS,
@@ -32,6 +32,7 @@ import {
   setNext,
   reconcile,
   resolveTimeout,
+  resolveAdvanceTimeout,
   decksFor,
   attackerIdForRound,
   type PlayerDoc,
@@ -394,9 +395,36 @@ function OnlineMatch({
     return () => clearTimeout(t);
   }, [isP1, matchId, clientId, match]);
 
+  // Shared auto-advance: P1 moves both devices to the next ball when the
+  // advance deadline passes (tapping Next on both advances sooner).
+  useEffect(() => {
+    if (!isP1 || match.status !== "active" || !match.advanceDeadline) return;
+    if (!match.outcome || match.outcome.round !== match.round) return;
+    const ms = Math.max(0, match.advanceDeadline - Date.now());
+    const t = setTimeout(() => resolveAdvanceTimeout(matchId, match, clientId), ms);
+    return () => clearTimeout(t);
+  }, [isP1, matchId, clientId, match]);
+
+  // Count the reveal numbers up + tap-to-advance helpers.
+  const myUp = useCountUp(myEff ?? 0, !!outcome && !outcome.timedOut);
+  const oppUp = useCountUp(oppEff ?? 0, !!outcome && !outcome.timedOut);
+  const canAdvance = !!outcome && !iPressedNext;
+  const advanceLabel = match.round + 1 >= TOTAL_ROUNDS ? "Tap → Result" : "Tap → Next";
+
   return (
-    <section className="mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl">
+    <section
+      onClick={() => canAdvance && setNext(matchId, isP1)}
+      className={`relative mx-auto flex min-h-[100svh] w-full max-w-md flex-col px-4 pb-6 pt-5 md:max-w-4xl ${canAdvance ? "cursor-pointer" : ""}`}
+    >
       <PhaseIntro round={match.round} />
+      {/* shared auto-advance countdown line */}
+      {outcome && (
+        <span
+          key={`cd-${match.round}`}
+          className="absolute left-0 top-0 z-10 h-1 rounded-r-full"
+          style={{ background: "linear-gradient(90deg,var(--gold-soft),var(--gold))", animation: "countdown-line 10000ms linear forwards" }}
+        />
+      )}
       {/* Phase banner */}
       <div
         className="relative overflow-hidden rounded-2xl border px-4 py-3"
@@ -437,23 +465,10 @@ function OnlineMatch({
         />
       </div>
 
-      {/* Scoreboard */}
-      <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--hair)] bg-black/30 px-4 py-2.5">
-        <span className="font-display flex items-center gap-2 text-sm font-semibold text-gold">
-          {myName}
-          <span key={myScore} className="animate-score-pop font-mono text-xl text-white">
-            {myScore}
-          </span>
-          <Strikes n={myStrikes} />
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-[var(--ink-dim)]">vs</span>
-        <span className="font-display flex items-center gap-2 text-sm font-semibold text-white/80">
-          <Strikes n={oppStrikes} />
-          <span key={oppScore} className="animate-score-pop font-mono text-xl">
-            {oppScore}
-          </span>
-          {oppName}
-        </span>
+      {/* Captured piles = the score */}
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <CapturedPile count={myScore} side="you" name={myName} strikes={myStrikes} align="left" />
+        <CapturedPile count={oppScore} side="opp" name={oppName} strikes={oppStrikes} align="right" />
       </div>
 
       {/* Turn banner — prominent so each player knows when it's their move */}
@@ -523,16 +538,20 @@ function OnlineMatch({
           className={`relative mt-1.5 transition duration-300 ${
             outcome && !iWonBall && outcome.winner !== "tie" ? "opacity-55 saturate-50" : ""
           }`}
+          style={{ perspective: "1000px" }}
         >
-          {amAttacker && !outcome ? (
-            <TappableCard
-              card={myCard}
-              phase={phase}
-              onPick={(s) => submitPick(matchId, match.round, s.key, clientId)}
-            />
-          ) : (
-            <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} />
-          )}
+          {/* Your card is always face-up to you — deal it in at the start. */}
+          <div key={`me-deal-${match.round}`} className="animate-flip">
+            {amAttacker && !outcome ? (
+              <TappableCard
+                card={myCard}
+                phase={phase}
+                onPick={(s) => submitPick(matchId, match.round, s.key, clientId)}
+              />
+            ) : (
+              <CardFace card={myCard} highlightStatKey={pickedKey} shownValue={myEff} />
+            )}
+          </div>
           {outcome && myCard.vizag && <VizagStrike key={`me-${match.round}`} />}
         </div>
 
@@ -544,9 +563,27 @@ function OnlineMatch({
       </div>
 
       <div className="my-2 flex items-center justify-center md:my-0 md:self-center">
-        <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
-          VS
-        </span>
+        {outcome ? (
+          iPressedNext ? (
+            <span className="whitespace-nowrap rounded-full border border-[var(--hair)] bg-black/40 px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ink-dim)]">
+              Waiting…
+            </span>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setNext(matchId, isP1);
+              }}
+              className="animate-pulse whitespace-nowrap rounded-full border border-[var(--gold)]/50 bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] px-4 py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-[#161003] shadow-[0_10px_24px_-8px_rgba(245,197,24,0.7)]"
+            >
+              {advanceLabel}
+            </button>
+          )
+        ) : (
+          <span className="font-display text-xs font-black tracking-[0.3em] text-[var(--ink-dim)]/60">
+            VS
+          </span>
+        )}
       </div>
 
       {/* Opponent card — hidden until reveal */}
@@ -558,9 +595,13 @@ function OnlineMatch({
           className={`relative mt-1.5 transition duration-300 ${
             outcome && iWonBall ? "opacity-55 saturate-50" : ""
           }`}
+          style={{ perspective: "1000px" }}
         >
           {outcome ? (
-            <CardFace card={oppCard} highlightStatKey={pickedKey} shownValue={oppEff} />
+            // Opponent's hidden card flips over on the reveal.
+            <div key={`opp-rev-${match.round}`} className="animate-flip">
+              <CardFace card={oppCard} highlightStatKey={pickedKey} shownValue={oppEff} />
+            </div>
           ) : (
             <CardFace card={oppCard} revealed={false} />
           )}
@@ -602,15 +643,22 @@ function OnlineMatch({
               </p>
             )}
             {!outcome.timedOut && (
-              <p className="mt-1 text-[12px] text-[var(--ink-dim)]">
-                {pickedStat?.label}:{" "}
-                <span className="font-mono text-white/90">
-                  {myOutcomeMissing ? "—" : fmt(myEff ?? 0)}
-                </span>{" "}
-                <span className="text-[var(--ink-dim)]/60">(you)</span> vs{" "}
-                <span className="font-mono text-white/90">
-                  {oppOutcomeMissing ? "—" : fmt(oppEff ?? 0)}
-                </span>{" "}
+              <p className="mt-1 flex items-center justify-center gap-1.5 text-[12px] text-[var(--ink-dim)]">
+                <span>{pickedStat?.label}:</span>
+                <span
+                  className={`font-mono tabular-nums ${iWonBall ? "text-gold text-base font-bold" : "text-white/90"}`}
+                  style={iWonBall ? { textShadow: "0 0 12px rgba(245,197,24,.6)" } : undefined}
+                >
+                  {myOutcomeMissing ? "—" : fmt(round1(myUp))}
+                </span>
+                <span className="text-[var(--ink-dim)]/60">(you)</span>
+                <span>vs</span>
+                <span
+                  className={`font-mono tabular-nums ${!iWonBall && outcome.winner !== "tie" ? "text-gold text-base font-bold" : "text-white/90"}`}
+                  style={!iWonBall && outcome.winner !== "tie" ? { textShadow: "0 0 12px rgba(245,197,24,.6)" } : undefined}
+                >
+                  {oppOutcomeMissing ? "—" : fmt(round1(oppUp))}
+                </span>
                 <span className="text-[var(--ink-dim)]/60">({oppName})</span>
               </p>
             )}
@@ -626,38 +674,8 @@ function OnlineMatch({
             )}
           </div>
 
-          {iPressedNext ? (
-            <p className="mt-3 text-center text-sm text-[var(--ink-dim)]">
-              Waiting for {oppName}…
-            </p>
-          ) : (
-            <button
-              onClick={() => setNext(matchId, isP1)}
-              className="font-display mt-3 w-full rounded-2xl bg-gradient-to-b from-[var(--gold-soft)] to-[var(--gold)] py-4 text-base font-bold uppercase tracking-widest text-[#161003]"
-            >
-              {match.round + 1 >= TOTAL_ROUNDS ? "See Result" : "Next Ball"}
-            </button>
-          )}
         </div>
       )}
     </section>
-  );
-}
-
-/** Two strike pips; fill red as a player times out. Two strikes = forfeit. */
-function Strikes({ n }: { n: number }) {
-  return (
-    <span className="flex items-center gap-0.5" title={`${n} / 2 timeout strikes`}>
-      {[0, 1].map((i) => (
-        <span
-          key={i}
-          className="h-1.5 w-1.5 rounded-full"
-          style={{
-            background: i < n ? "#ff6a6a" : "rgba(255,255,255,0.18)",
-            boxShadow: i < n ? "0 0 6px rgba(255,106,106,0.7)" : "none",
-          }}
-        />
-      ))}
-    </span>
   );
 }
