@@ -10,7 +10,7 @@
 // Screen state machine: name → lobby → match → result.
 
 import { useEffect, useState } from "react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import { NameEntry } from "@/components/NameEntry";
 import { Lobby } from "@/components/Lobby";
 import { MatchScreen } from "@/components/MatchScreen";
